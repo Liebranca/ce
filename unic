@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+
+# deps
+  use strict;
+  use warnings;
+
+# ---   *   ---   *   ---
+
+open FH,'>','./chartab.h' or die $!;
+print FH "wchar_t chartab[]=\n  ";
+
+for(my $i=0;$i<256;$i++) {
+
+  my $h=sprintf "%02X",$i;
+  if(!($i%4)) {
+    if($i) {print FH "\"\n  ";};
+    print FH 'L"';
+
+  };print FH "\\x01$h";
+
+};print FH "\"\n;";
+
+close FH;
+
+# ---   *   ---   *   ---
