@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# CHARTAB
+# makes lycon char table
+
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+
+# CONTRIBUTORS
+# lyeb,
+# ---   *   ---   *   ---
+
+# deps
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/avtomat/';
+  use avt;
+
+# ---   *   ---   *   ---
+
+sub generator {
+
+  my $FH=shift;
+  print $FH "wchar_t chartab[]=\n  ";
+
+  for(my $i=0;$i<256;$i++) {
+
+    my $h=sprintf "%02X",$i;
+    if(!($i%4)) {
+      if($i) {print $FH "\"\n  ";};
+      print $FH 'L"';
+
+    };print $FH "\\x01$h";
+
+  };print $FH "\"\n;\n";
+
+};
+
+my $root=avt::root $ENV{'ARPATH'};chdir $root;
+avt::wrcboil_h('/ce/','chartab',\&generator);
+
+# ---   *   ---   *   ---
+1; # ret

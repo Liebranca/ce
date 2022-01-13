@@ -1,0 +1,127 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# KEYMAP
+# generates tables for
+# key lookups, and such
+
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+
+# CONTRIBUTORS
+# lyeb,
+# ---   *   ---   *   ---
+
+# deps
+  use strict;
+  use warnings;
+
+  # change to install dir when we're done
+  use lib $ENV{'ARPATH'}.'/avtomat/';
+  use avt;
+
+# ---   *   ---   *   ---
+# some macros
+
+  use constant {
+    STRUCT => "CE",
+
+  };use constant {
+    CURSOR => "${ \STRUCT }.cursor",
+    KEYB   => "${ \STRUCT }.kbd",
+    WDIM   => "${ \STRUCT }.wsz.ws_",
+
+  };use constant {
+    CY     => "${ \CURSOR }.y",
+    CYMN   => '0',
+    CYMX   => "${ \WDIM }row-1",
+
+    CX     => "${ \CURSOR }.x",
+    CXMN   => '0',
+    CXMX   => "${ \WDIM }col-1",
+
+    KEYL   => "${ \KEYB }.l",
+    KEYR   => "${ \KEYB }.r",
+
+  };
+
+# ---   *   ---   *   ---
+# base table
+
+  my @KEYMAP=(
+
+    # movement keys
+    'GBAK',[avt::mord('i'),undef,
+      CY.'-='.CY.'>('.CYMN.');'.KEYL.'|=0x01<<0'],
+
+    'GFWD',[avt::mord('k'),undef,
+      CY.'+='.CY.'<('.CYMX.');'.KEYL.'|=0x04<<0'],
+
+    'GRGT',[avt::mord('l'),undef,
+      CX.'+='.CX.'<('.CXMX.');'.KEYL.'|=0x10<<0'],
+
+    'GLFT',[avt::mord('j'),undef,
+      CX.'-='.CX.'>('.CXMN.');'.KEYL.'|=0x40<<0'],
+
+    # re/av,beg/end
+    'GPRV',[avt::mord("\e[5~"),undef,
+      CY.'='.CYMN.';'.KEYL.'|=0x01<<8'],
+
+    'GNXT',[avt::mord("\e[6~"),undef,
+      CY.'='.CYMX.';'.KEYL.'|=0x04<<8'],
+
+    'GBEG',[avt::mord("\e[1~"),undef,
+      CX.'='.CXMN.';'.KEYL.'|=0x10<<8'],
+
+    'GEND',[avt::mord("\e[4~"),undef,
+      CX.'='.CXMX.';'.KEYL.'|=0x40<<8'],
+
+    # del
+    'EDEL',[avt::mord("\e[3~"),undef,
+      ''],
+
+  );
+
+# ---   *   ---   *   ---
+
+sub generator {
+  my $FH=shift;
+
+  # table and lookup aliases
+  my $T0="\nstatic const uint64_t KEYMAP[]={\n";
+  my $T1="";
+
+  # evals/lookups function
+  my $T2="void keychk(uint64_t btt) {\n";
+  $T2.="  switch(btt) {\n\n";
+
+  my $i=0;while(@KEYMAP) {
+    my $name=shift @KEYMAP;
+    my $data=shift @KEYMAP;
+
+    # unpack array reference
+    my ($kcode,$call,$fmul)=@{ $data };
+    $T0.="  (uint64_t) $kcode,\n";
+    $T1.="#define K_$name KEYMAP[$i]\n";
+
+    $T2.="  case $kcode:\n  $fmul;break;\n\n";
+
+    $i++;
+
+  };
+
+  $T0=substr $T0,0,(length $T0)-2;
+  $T0.="\n};\n\n";$T1.="\n";
+
+  $T2.="  default:break;\n  };\n};\n\n";
+
+  print $FH $T0.$T1.$T2;
+
+};
+
+my $root=avt::root $ENV{'ARPATH'};chdir $root;
+avt::wrcboil_h('/ce/','keymap',\&generator);
+
+
+# ---   *   ---   *   ---
+1; # ret
