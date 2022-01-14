@@ -38,8 +38,17 @@ sub generator {
 
 };
 
+# ---   *   ---   *   ---
+
 my $root=avt::root $ENV{'ARPATH'};chdir $root;
-avt::wrcboil_h('/ce/','chartab',\&generator);
+
+avt::wrcboil_h(
+  '/ce/',
+  'chartab',
+  \&generator,
+  'IBN-3DILA'
+
+);
 
 # ---   *   ---   *   ---
 1; # ret

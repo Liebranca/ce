@@ -27,14 +27,18 @@
   #include <time.h>
 
   #include <wchar.h>
-  #include "chartab.h"
 
+  #include <dirent.h>
+  #include <limits.h>
+  #include <linux/kd.h>
   #include <sys/ioctl.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
 
 // ---   *   ---   *   ---
 // constants
   #define KBD_SZ 0x08
-  #define CEB_SZ 0x400
+  #define CEB_SZ 0x1000
 
 // ---   *   ---   *   ---
 // global state
@@ -58,7 +62,22 @@
 
     } kbd;
 
+    struct {
+      char lines[64][128];
+
+    } render;
+
+    int mode;
+
   } STRUCT_CE;static STRUCT_CE CE={0};
+
+// ---   *   ---   *   ---
+
+  enum CE_MODES {
+    CE_MTEXT,
+    CE_MKEYS
+
+  };
 
 // ---   *   ---   *   ---
 // fwd decls
@@ -79,7 +98,52 @@ void badd(char* src) {
   CE.buff_i&=CEB_SZ-1;
 
 // buffer wipe
-};void bcl(void) {memset(CE.buff,0,CEB_SZ);};
+};void bcl(void) {
+  memset(CE.buff,0,CEB_SZ);
+  CE.buff_i^=CE.buff_i;
+
+};
+
+// ---   *   ---   *   ---
+
+// draw the buffer
+void brend(void) {
+
+  // wipe screen, reposition
+  char m[128];
+
+  // dump lines on draw buffer
+  for(int y=0;y<CE.wsz.ws_row;y++) {
+
+    if(!CE.render.lines[y]) {continue;}
+
+    sprintf(m,
+      "\e[%u;1H%s",
+
+      y+1,CE.render.lines[y]
+
+    );badd(m);
+    memset(CE.render.lines[y],0,128);
+
+  };
+
+// ---   *   ---   *   ---
+
+  // move cursor to pos and unhide
+  sprintf(m,
+    "\e[%u;%uH\e[?25h",
+    CE.cursor.y+1,
+    CE.cursor.x+1
+
+  );badd(m);
+
+  write(
+    STDOUT_FILENO,
+    CE.buff,
+    CE.buff_i
+
+  );bcl();badd("\e[?25l");
+};
 
 // ---   *   ---   *   ---
 // term utils
@@ -97,7 +161,7 @@ int iopen(void) {
   struct termios term={0};
   tcgetattr(STDIN_FILENO,&CE.restore);
 
-  term.c_cc[VTIME]=2;
+  term.c_cc[VTIME]=3;
   term.c_cc[VMIN]=0;
 
   term.c_cflag|=(CS8);
@@ -106,17 +170,20 @@ int iopen(void) {
   term.c_lflag&=~(ICANON|ECHO|IEXTEN|ISIG);
   tcsetattr(STDIN_FILENO,TCSAFLUSH,&term);
 
+  ioctl(STDIN_FILENO,KDSKBMODE,K_MEDIUMRAW);
+
   // get screen size
   ioctl(STDOUT_FILENO,TIOCGWINSZ,&CE.wsz);
 
   // clear screen and reposition
-  badd("\e[?25l\e[2J\e[H");
+  badd("\e[2J\e[H\e[?25l");
   CE.cursor.x=0;CE.cursor.y=0;
 
   return 0;
 
 // ^the undo for it
 };void iclose(void) {
+  ioctl(STDIN_FILENO,KDSKBMODE,K_XLATE);
   tcsetattr(STDIN_FILENO,TCSAFLUSH,&CE.restore);
   write(STDOUT_FILENO,"\e[2J\e[H",7);
 
@@ -166,7 +233,7 @@ void tick(CLCK* c) {
 // ---   *   ---   *   ---
 // keyhandler
 
-void kev(void) {
+/*void kev(void) {
   for(int x=0;x<8;x++) {
 
     int b=x*2;
@@ -184,17 +251,28 @@ void kev(void) {
     break;
 
   };
-};
+};*/
 
 #include "keymap.h"
+#include "chartab.h"
 
 // ---   *   ---   *   ---
 
-void main(void) {
+void main(int argc,char** argv) {
+
+  do {
+    if(!strcmp(*argv,"-k")) {
+      CE.mode=CE_MKEYS;
+
+    };argv++;argc--;
+
+  } while(argc);
 
   // open stdin for non-blocking io
   // also ensure we can use lycon chars
   iopen();setlocale(LC_ALL,"");
+
+// ---   *   ---   *   ---
 
   // set aside memory for keyboard input
   char kbd[KBD_SZ];
@@ -216,29 +294,16 @@ void main(void) {
 // ---   *   ---   *   ---
 
   // looparino
-  );int x=1600;do {
+  );int PANIC_TIMER=1600;do {
 
-    // refresh and wipe buffer
-    if(CE.buff_i) {
-      write(
-        STDOUT_FILENO,
-        CE.buff,
-        CE.buff_i
+    // render last frame
+    brend();
 
-      );bcl();badd("\e[?25l");
-    };
+    // update the draw clock and tick
+    sprintf(CE.render.lines[CE.wsz.ws_row-1],
+        "%lc",clck.v[clck.vix]
 
-// ---   *   ---   *   ---
-
-    // print the clock and tick
-    { char tmp[32];sprintf(tmp,
-        "\e[%u;1H\e[2K%lc",
-
-        CE.wsz.ws_row,
-        clck.v[clck.vix]
-
-      );badd(tmp);tick(&clck);
-    };
+    );tick(&clck);
 
 // ---   *   ---   *   ---
 
@@ -246,34 +311,25 @@ void main(void) {
     read(STDIN_FILENO,kbd,KBD_SZ);
 
     // exit or process input
-    if(*kbd_ptr) { if(kbd[0]=='Q') {break;};
+    if(*kbd_ptr) { if(kbd[0]==0x11) {break;};
 
       // print the code for debug
-      char tmp[64];sprintf(tmp,
-        "\e[%u;1H%016"PRIX64"\e[K",
-        CE.wsz.ws_row-1,
-        *kbd_ptr
+      sprintf(CE.render.lines[CE.wsz.ws_row-1]+2,
+        " | %016"PRIX64,*kbd_ptr
 
-      );badd(tmp);
+      );
 
-      keychk(*kbd_ptr);*kbd_ptr^=*kbd_ptr;
+      keychk(*kbd_ptr);
+      *kbd_ptr^=*kbd_ptr;
 
-    };kev();
+    };//kev();
 
 // ---   *   ---   *   ---
 
-    // move cursor to pos and unhide
-    { char tmp[64];sprintf(tmp,
-        "\e[%u;%uH\e[?25h",
-        CE.cursor.y+1,
-        CE.cursor.x+1
-
-      );badd(tmp);
-    };
-
-  } while(x--);
+  } while(PANIC_TIMER--);
   return;
 
 };
 
 // ---   *   ---   *   ---
+

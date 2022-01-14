@@ -46,15 +46,35 @@
   };
 
 # ---   *   ---   *   ---
+
+# magic
+sub parse_kbdlay {
+  my $f=$ENV{'ARPATH'}.'/ce/kbdlay';
+  my @lines=split "\n",`cat $f`;
+  my @keyids=();
+
+  while(@lines) {
+    my $line=shift @lines;
+    if(!$line || (index $line,'#')==0) {
+      next;
+
+    };push @keyids,$line;
+    print "$line\n";
+
+  };
+
+};parse_kbdlay();
+
+# ---   *   ---   *   ---
 # base table
 
   my @KEYMAP=(
 
     # movement keys
-    'GBAK',[avt::mord('i'),undef,
+    'GFWD',[avt::mord('i'),undef,
       CY.'-='.CY.'>('.CYMN.');'.KEYL.'|=0x01<<0'],
 
-    'GFWD',[avt::mord('k'),undef,
+    'GBAK',[avt::mord('k'),undef,
       CY.'+='.CY.'<('.CYMX.');'.KEYL.'|=0x04<<0'],
 
     'GRGT',[avt::mord('l'),undef,
@@ -76,8 +96,11 @@
     'GEND',[avt::mord("\e[4~"),undef,
       CX.'='.CXMX.';'.KEYL.'|=0x40<<8'],
 
-    # del
+    # del, ret
     'EDEL',[avt::mord("\e[3~"),undef,
+      ''],
+
+    'ERET',[0x0D,undef,
       ''],
 
   );
@@ -119,8 +142,17 @@ sub generator {
 
 };
 
+# ---   *   ---   *   ---
+
 my $root=avt::root $ENV{'ARPATH'};chdir $root;
-avt::wrcboil_h('/ce/','keymap',\&generator);
+
+avt::wrcboil_h(
+  '/ce/',
+  'keymap',
+  \&generator,
+  'IBN-3DILA'
+
+);
 
 
 # ---   *   ---   *   ---
