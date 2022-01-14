@@ -313,9 +313,15 @@ void main(int argc,char** argv) {
     // exit or process input
     if(*kbd_ptr) { if(kbd[0]==0x11) {break;};
 
+      if(*kbd_ptr>=sizeof(KEY_NAMES)/sizeof(char*)) {
+        *kbd_ptr^=*kbd_ptr;
+
+      };
+
       // print the code for debug
       sprintf(CE.render.lines[CE.wsz.ws_row-1]+2,
-        " | %016"PRIX64,*kbd_ptr
+        " | %016"PRIX64" | %s\e[K",*kbd_ptr,
+        KEY_NAMES[*kbd_ptr]
 
       );
 

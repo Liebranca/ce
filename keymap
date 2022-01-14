@@ -46,24 +46,48 @@
   };
 
 # ---   *   ---   *   ---
+# global storage
+
+  my %CACHE=(
+    -LAYOUT   => 0,
+    -LAYOUT_I => 0,
+
+  );
+
+# ---   *   ---   *   ---
 
 # magic
 sub parse_kbdlay {
   my $f=$ENV{'ARPATH'}.'/ce/kbdlay';
   my @lines=split "\n",`cat $f`;
-  my @keyids=();
+  my %kbdlay;my $i=0;
+  my @layi=();
 
   while(@lines) {
     my $line=shift @lines;
     if(!$line || (index $line,'#')==0) {
       next;
 
-    };push @keyids,$line;
-    print "$line\n";
+    };$line.=($line eq 'NON')
+      ? "$i"
+      : ''
+      ;
 
-  };
+    $kbdlay{$line}=$i;$i++;
+    push @layi,$line;
 
-};parse_kbdlay();
+  };$CACHE{-LAYOUT_I}=\@layi;
+  return \%kbdlay;
+
+};$CACHE{-LAYOUT}=parse_kbdlay();
+
+# arg=keyname
+# Key Index, a simple shorthand
+sub KI {
+  my $key_name=shift;
+  return $CACHE{-LAYOUT}->{$key_name};
+
+};
 
 # ---   *   ---   *   ---
 # base table
@@ -71,37 +95,37 @@ sub parse_kbdlay {
   my @KEYMAP=(
 
     # movement keys
-    'GFWD',[avt::mord('i'),undef,
+    'GFWD',[KI('one'),undef,
       CY.'-='.CY.'>('.CYMN.');'.KEYL.'|=0x01<<0'],
 
-    'GBAK',[avt::mord('k'),undef,
+    'GBAK',[KI('two'),undef,
       CY.'+='.CY.'<('.CYMX.');'.KEYL.'|=0x04<<0'],
 
-    'GRGT',[avt::mord('l'),undef,
+    'GRGT',[KI('three'),undef,
       CX.'+='.CX.'<('.CXMX.');'.KEYL.'|=0x10<<0'],
 
-    'GLFT',[avt::mord('j'),undef,
+    'GLFT',[KI('four'),undef,
       CX.'-='.CX.'>('.CXMN.');'.KEYL.'|=0x40<<0'],
 
-    # re/av,beg/end
-    'GPRV',[avt::mord("\e[5~"),undef,
-      CY.'='.CYMN.';'.KEYL.'|=0x01<<8'],
-
-    'GNXT',[avt::mord("\e[6~"),undef,
-      CY.'='.CYMX.';'.KEYL.'|=0x04<<8'],
-
-    'GBEG',[avt::mord("\e[1~"),undef,
-      CX.'='.CXMN.';'.KEYL.'|=0x10<<8'],
-
-    'GEND',[avt::mord("\e[4~"),undef,
-      CX.'='.CXMX.';'.KEYL.'|=0x40<<8'],
-
-    # del, ret
-    'EDEL',[avt::mord("\e[3~"),undef,
-      ''],
-
-    'ERET',[0x0D,undef,
-      ''],
+#    # re/av,beg/end
+#    'GPRV',[avt::mord("\e[5~"),undef,
+#      CY.'='.CYMN.';'.KEYL.'|=0x01<<8'],
+#
+#    'GNXT',[avt::mord("\e[6~"),undef,
+#      CY.'='.CYMX.';'.KEYL.'|=0x04<<8'],
+#
+#    'GBEG',[avt::mord("\e[1~"),undef,
+#      CX.'='.CXMN.';'.KEYL.'|=0x10<<8'],
+#
+#    'GEND',[avt::mord("\e[4~"),undef,
+#      CX.'='.CXMX.';'.KEYL.'|=0x40<<8'],
+#
+#    # del, ret
+#    'EDEL',[avt::mord("\e[3~"),undef,
+#      ''],
+#
+#    'ERET',[0x0D,undef,
+#      ''],
 
   );
 
@@ -138,7 +162,18 @@ sub generator {
 
   $T2.="  default:break;\n  };\n};\n\n";
 
-  print $FH $T0.$T1.$T2;
+  my $T3="static const char* KEY_NAMES[]={\n";
+
+  my @lay=@{ $CACHE{-LAYOUT_I} };
+
+  while(@lay) {
+    my $name=shift @lay;
+    $T3.=(avt::dqwrap $name ).",\n";
+
+  };$T3=substr $T3,0,(length $T3)-2;
+  $T3.="\n};\n\n";
+
+  print $FH $T0.$T1.$T2.$T3;
 
 };
 
