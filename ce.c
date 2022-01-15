@@ -36,6 +36,20 @@
   #include <sys/stat.h>
 
 // ---   *   ---   *   ---
+// just to make sure we don't
+// exit without restoring term
+  #include <signal.h>
+
+void onsegv(int sig) {
+  printf(
+    "\n!!(0): "
+    "I messed up the math somewhere\n");
+
+  exit(1);
+
+};
+
+// ---   *   ---   *   ---
 // constants
   #define KBD_SZ 0x08
   #define CEB_SZ 0x1000
@@ -56,11 +70,7 @@
 
     } cursor;
 
-    struct {
-      uint64_t l;
-      uint64_t r;
-
-    } kbd;
+    int kbd[128];
 
     struct {
       char lines[64][128];
@@ -155,12 +165,18 @@ int iopen(void) {
     printf("STDIN is not a tty\n");
     return 1;
 
-  };atexit(iclose);
+  };
 
-  // put tty in raw mode
+  // save original attrs
   struct termios term={0};
   tcgetattr(STDIN_FILENO,&CE.restore);
 
+  // ensure unexpected segfaults
+  // cant lock me in raw mode
+  signal(SIGSEGV,onsegv);
+  atexit(iclose);
+
+  // put tty in raw mode
   term.c_cc[VTIME]=3;
   term.c_cc[VMIN]=0;
 
@@ -170,6 +186,7 @@ int iopen(void) {
   term.c_lflag&=~(ICANON|ECHO|IEXTEN|ISIG);
   tcsetattr(STDIN_FILENO,TCSAFLUSH,&term);
 
+  // we dont want to read no ascii codes
   ioctl(STDIN_FILENO,KDSKBMODE,K_MEDIUMRAW);
 
   // get screen size
@@ -231,30 +248,13 @@ void tick(CLCK* c) {
 };
 
 // ---   *   ---   *   ---
-// keyhandler
+// keyhandling
 
-/*void kev(void) {
-  for(int x=0;x<8;x++) {
+// generated imports
+  #include "keymap.h"
+  #include "chartab.h"
 
-    int b=x*2;
-    int y=(CE.kbd.l&(0b11<<b)) >> b;
-
-    int held=(y&0b10)!=0;int tap=y&0b01;
-
-    held=0b10<<b;
-    tap=0b01<<b;
-    int active=held|tap;
-
-    CE.kbd.l&=~active;
-    CE.kbd.l|=(y)*held;
-
-    break;
-
-  };
-};*/
-
-#include "keymap.h"
-#include "chartab.h"
+// [manually written code goes here]
 
 // ---   *   ---   *   ---
 
@@ -311,24 +311,24 @@ void main(int argc,char** argv) {
     read(STDIN_FILENO,kbd,KBD_SZ);
 
     // exit or process input
-    if(*kbd_ptr) { if(kbd[0]==0x11) {break;};
+    if(*kbd_ptr) { if(*kbd_ptr==0x91) {break;};
 
-      if(*kbd_ptr>=sizeof(KEY_NAMES)/sizeof(char*)) {
-        *kbd_ptr^=*kbd_ptr;
+      char key_id=(*kbd_ptr)&0x7F;
 
-      };
+      key_id*=
+        key_id<( sizeof(KEY_NAMES)/sizeof(char*) );
+
+      char key_rel=*kbd_ptr==key_id+0x80;
 
       // print the code for debug
       sprintf(CE.render.lines[CE.wsz.ws_row-1]+2,
-        " | %016"PRIX64" | %s\e[K",*kbd_ptr,
-        KEY_NAMES[*kbd_ptr]
+        " | %016"PRIX64" | %s %d\e[K",*kbd_ptr,
+        KEY_NAMES[key_id], key_rel
 
-      );
-
-      keychk(*kbd_ptr);
+      );keyset(key_id,key_rel);
       *kbd_ptr^=*kbd_ptr;
 
-    };//kev();
+    };keychk();
 
 // ---   *   ---   *   ---
 

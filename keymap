@@ -28,7 +28,7 @@
 
   };use constant {
     CURSOR => "${ \STRUCT }.cursor",
-    KEYB   => "${ \STRUCT }.kbd",
+    KBD    => "${ \STRUCT }.kbd",
     WDIM   => "${ \STRUCT }.wsz.ws_",
 
   };use constant {
@@ -39,9 +39,6 @@
     CX     => "${ \CURSOR }.x",
     CXMN   => '0',
     CXMX   => "${ \WDIM }col-1",
-
-    KEYL   => "${ \KEYB }.l",
-    KEYR   => "${ \KEYB }.r",
 
   };
 
@@ -92,40 +89,44 @@ sub KI {
 # ---   *   ---   *   ---
 # base table
 
+  # 'key_name'=>[scancode,onDown,onUp,onHeld]
+
   my @KEYMAP=(
 
     # movement keys
-    'GFWD',[KI('one'),undef,
-      CY.'-='.CY.'>('.CYMN.');'.KEYL.'|=0x01<<0'],
+    'GFWD',[KI('up'),'','',
+      CY.'-='.CY.'>('.CYMN.')',
 
-    'GBAK',[KI('two'),undef,
-      CY.'+='.CY.'<('.CYMX.');'.KEYL.'|=0x04<<0'],
+    ],
 
-    'GRGT',[KI('three'),undef,
-      CX.'+='.CX.'<('.CXMX.');'.KEYL.'|=0x10<<0'],
+    'GBAK',[KI('down'),'','',
+      CY.'+='.CY.'<('.CYMX.')',
 
-    'GLFT',[KI('four'),undef,
-      CX.'-='.CX.'>('.CXMN.');'.KEYL.'|=0x40<<0'],
+    ],
+
+    'GRGT',[KI('right'),'','',
+      CX.'+='.CX.'<('.CXMX.')',
+
+    ],
+
+    'GLFT',[KI('left'),'','',
+      CX.'-='.CX.'>('.CXMN.')',
+
+    ],
 
 #    # re/av,beg/end
-#    'GPRV',[avt::mord("\e[5~"),undef,
-#      CY.'='.CYMN.';'.KEYL.'|=0x01<<8'],
+#    'GPRV',[KI("re"),undef,CY.'='.CYMN],
 #
-#    'GNXT',[avt::mord("\e[6~"),undef,
-#      CY.'='.CYMX.';'.KEYL.'|=0x04<<8'],
+#    'GNXT',[KI("av"),undef,CY.'='.CYMX],
 #
-#    'GBEG',[avt::mord("\e[1~"),undef,
-#      CX.'='.CXMN.';'.KEYL.'|=0x10<<8'],
+#    'GBEG',[KI("home"),undef,CX.'='.CXMN],
 #
-#    'GEND',[avt::mord("\e[4~"),undef,
-#      CX.'='.CXMX.';'.KEYL.'|=0x40<<8'],
+#    'GEND',[KI("end"),undef,CX.'='.CXMX],
 #
 #    # del, ret
-#    'EDEL',[avt::mord("\e[3~"),undef,
-#      ''],
+#    'EDEL',[KI("del"),undef,''],
 #
-#    'ERET',[0x0D,undef,
-#      ''],
+#    'ERET',[KI("ret"),undef,''],
 
   );
 
@@ -134,46 +135,153 @@ sub KI {
 sub generator {
   my $FH=shift;
 
-  # table and lookup aliases
-  my $T0="\nstatic const uint64_t KEYMAP[]={\n";
-  my $T1="";
+  # KEYMAP[key_name]==scancode
+  # we don't use this, nice to have maybe?
+  my $T0="\nstatic const char KEYMAP[]={\n";
 
-  # evals/lookups function
-  my $T2="void keychk(uint64_t btt) {\n";
-  $T2.="  switch(btt) {\n\n";
+  # some more macros
+  my $T1=''.
 
+    "#ifndef NIHIL_FUNC\n".
+    "#define NIHIL_FUNC\n".
+    "typedef void(*nihil)(void);\n".
+    "#endif\n".
+
+    "#define IS_TAP(x) ((".KBD."[(x)]&0b001)>>0)\n".
+    "#define IS_HEL(x) ((".KBD."[(x)]&0b010)>>1)\n".
+    "#define IS_REL(x) ((".KBD."[(x)]&0b100)>>2)\n".
+
+    "\nenum {\n";
+
+  # keydown events
+  my $T2="void keyset(char key,char rel) {\n";
+  $T2.=" if(!rel) {\n  switch(key) {\n\n";
+
+  # keyup events
+  my $T3=" } else {\n  switch(key) {\n\n";
+
+  # keyheld functions
+  my $T4="void keyskip(void) {;};\n";
+
+  # ^an array of pointers to them
+  my $T5="static const nihil K_HEL_FUNCS[]={\n".
+    "keyskip,\n"
+
+  ;
+
+# ---   *   ---   *   ---
+
+  # iter through the map
   my $i=0;while(@KEYMAP) {
     my $name=shift @KEYMAP;
     my $data=shift @KEYMAP;
 
     # unpack array reference
-    my ($kcode,$call,$fmul)=@{ $data };
-    $T0.="  (uint64_t) $kcode,\n";
-    $T1.="#define K_$name KEYMAP[$i]\n";
+    my (
+      $kcode,
+      $onDown,
+      $onUp,
+      $onHeld,
 
-    $T2.="  case $kcode:\n  $fmul;break;\n\n";
+    )=@{ $data };
+
+# ---   *   ---   *   ---
+
+    # add items to enum,array couple
+    $T0.="$kcode,\n";
+    $T1.="K_$name,\n";
+
+# ---   *   ---   *   ---
+
+    # ontap table
+
+    $T2.="   case $kcode:\n";
+
+    $T2.=
+
+      "   ".KBD."[K_$name]|=3;\n".
+
+#      "   ".KBD."[K_$name]|=2*((".
+#        KBD."[K_$name]&1));\n".
+#
+#      "   ".KBD."[K_$name]&=~1;\n".
+#      "   ".KBD."[K_$name]|=1*(!(".
+#        KBD."[K_$name]&2));\n".
+
+      "   if(".KBD."[K_$name]&1) {\n".
+      "    $onDown;\n  };\n".
+
+      "   break;\n\n";
+
+# ---   *   ---   *   ---
+
+    # onrel table
+
+    $T3.="  case $kcode:\n  $onUp;\n";
+
+    $T3.=
+      "   ".KBD."[K_$name]&=~3;\n".
+      "   ".KBD."[K_$name]|=4;break;\n";
+
+# ---   *   ---   *   ---
+
+    # onhel table
+
+    $T4.="void K_HEL_FUNC_$name(void) {\n".
+      " $onHeld;\n};\n\n";
+
+    $T5.="K_HEL_FUNC_$name,\n";
 
     $i++;
 
   };
 
+# ---   *   ---   *   ---
+
+  # get rid of the last comma and close lists
   $T0=substr $T0,0,(length $T0)-2;
-  $T0.="\n};\n\n";$T1.="\n";
+  $T0.="\n};\n\n";
 
-  $T2.="  default:break;\n  };\n};\n\n";
+  # end the enum with a num_items
+  $T1.="K_COUNT\n};\n\n";
 
-  my $T3="static const char* KEY_NAMES[]={\n";
+  # end switch0;end switch1,end if, end function
+  $T2.="\n   default:break;\n  };\n\n";
+  $T3.="\n   default:break;\n  };\n };\n};\n\n";
 
+  # end function table
+  $T5=substr $T5,0,(length $T5)-2;
+  $T5.="\n};\n\n";
+
+  # ^add caller def
+  $T5.="void keychk(void) {\n".
+    " for(int x=0;x<K_COUNT;x++) {\n".
+    "  K_HEL_FUNCS[(x+1)*IS_HEL(x)]();\n".
+    " };\n".
+    "};\n\n"
+
+  ;
+
+# ---   *   ---   *   ---
+
+  # this bit is just to see the key names
+  my $DEBUG_NAMES="static const char* KEY_NAMES[]={\n";
   my @lay=@{ $CACHE{-LAYOUT_I} };
 
+  # make an array of human-readable ids
+  # useful for debug prints
   while(@lay) {
     my $name=shift @lay;
-    $T3.=(avt::dqwrap $name ).",\n";
+    $DEBUG_NAMES.=(avt::dqwrap $name ).",\n";
 
-  };$T3=substr $T3,0,(length $T3)-2;
-  $T3.="\n};\n\n";
+  };$DEBUG_NAMES=substr(
+      $DEBUG_NAMES,0,
+      length $DEBUG_NAMES
 
-  print $FH $T0.$T1.$T2.$T3;
+  );$DEBUG_NAMES.="\n};\n\n";
+
+  # write it all to file
+  print $FH $T0.$T1.$T2.$T3.$T4.$T5.$DEBUG_NAMES;
 
 };
 
