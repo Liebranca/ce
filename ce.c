@@ -78,6 +78,7 @@ void onsegv(int sig) {
     } render;
 
     int mode;
+    size_t evcnt;
 
   } STRUCT_CE;static STRUCT_CE CE={0};
 
@@ -177,7 +178,7 @@ int iopen(void) {
   atexit(iclose);
 
   // put tty in raw mode
-  term.c_cc[VTIME]=3;
+  term.c_cc[VTIME]=0;
   term.c_cc[VMIN]=0;
 
   term.c_cflag|=(CS8);
@@ -239,8 +240,10 @@ void tick(CLCK* c) {
   c->delta=c->fbeg - c->fend;
   c->fend=c->fbeg;
 
-  if(c->delta<c->flen) {
-    usleep(c->flen - c->delta);
+  uint64_t m_flen=c->flen<<((!CE.evcnt)*3);
+
+  if(c->delta<m_flen) {
+    usleep(m_flen - c->delta);
     c->delta=0;
 
   };c->vix++;c->vix&=(c->vsz-1);
@@ -301,7 +304,7 @@ void main(int argc,char** argv) {
 
     // update the draw clock and tick
     sprintf(CE.render.lines[CE.wsz.ws_row-1],
-        "%lc",clck.v[clck.vix]
+        "%lc | EV %02"PRIX8,clck.v[clck.vix],CE.evcnt
 
     );tick(&clck);
 
@@ -310,23 +313,25 @@ void main(int argc,char** argv) {
     // capture this frames input
     read(STDIN_FILENO,kbd,KBD_SZ);
 
-    // exit or process input
-    if(*kbd_ptr) { if(*kbd_ptr==0x91) {break;};
+    // process input
+    while(*kbd_ptr) {
 
       char key_id=(*kbd_ptr)&0x7F;
 
       key_id*=
         key_id<( sizeof(KEY_NAMES)/sizeof(char*) );
 
-      char key_rel=*kbd_ptr==key_id+0x80;
+      char key_rel=((*kbd_ptr)&0xFF)==key_id+0x80;
 
       // print the code for debug
-      sprintf(CE.render.lines[CE.wsz.ws_row-1]+2,
-        " | %016"PRIX64" | %s %d\e[K",*kbd_ptr,
+      sprintf(
+        CE.render.lines[CE.wsz.ws_row-1]+10,
+
+        " | %02"PRIX8" | %s %d\e[K",key_id,
         KEY_NAMES[key_id], key_rel
 
       );keyset(key_id,key_rel);
-      *kbd_ptr^=*kbd_ptr;
+      *kbd_ptr=(*kbd_ptr)>>8;
 
     };keychk();
 

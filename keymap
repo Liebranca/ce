@@ -30,6 +30,7 @@
     CURSOR => "${ \STRUCT }.cursor",
     KBD    => "${ \STRUCT }.kbd",
     WDIM   => "${ \STRUCT }.wsz.ws_",
+    BUSY   => "${ \STRUCT }.evcnt",
 
   };use constant {
     CY     => "${ \CURSOR }.y",
@@ -92,6 +93,11 @@ sub KI {
   # 'key_name'=>[scancode,onDown,onUp,onHeld]
 
   my @KEYMAP=(
+
+    # quick exit for testing
+    'GESC',[KI('escape'),'','exit(0)','',
+
+    ],
 
     # movement keys
     'GFWD',[KI('up'),'','',
@@ -158,7 +164,8 @@ sub generator {
   $T2.=" if(!rel) {\n  switch(key) {\n\n";
 
   # keyup events
-  my $T3=" } else {\n  switch(key) {\n\n";
+  my $T3=" } else {".BUSY."-=".BUSY.">0;\n".
+    "\n  switch(key) {\n\n";
 
   # keyheld functions
   my $T4="void keyskip(void) {;};\n";
@@ -199,16 +206,12 @@ sub generator {
 
     $T2.=
 
-      "   ".KBD."[K_$name]|=3;\n".
+      "   ".KBD."[K_$name]&=~1;\n".
+      "   ".KBD."[K_$name]|=1*(!(".
+        KBD."[K_$name]&2));\n".
 
-#      "   ".KBD."[K_$name]|=2*((".
-#        KBD."[K_$name]&1));\n".
-#
-#      "   ".KBD."[K_$name]&=~1;\n".
-#      "   ".KBD."[K_$name]|=1*(!(".
-#        KBD."[K_$name]&2));\n".
-
-      "   if(".KBD."[K_$name]&1) {\n".
+      "   if(IS_TAP(K_$name)) {\n".
+      "   ".BUSY."++;\n".
       "    $onDown;\n  };\n".
 
       "   break;\n\n";
@@ -257,6 +260,9 @@ sub generator {
   $T5.="void keychk(void) {\n".
     " for(int x=0;x<K_COUNT;x++) {\n".
     "  K_HEL_FUNCS[(x+1)*IS_HEL(x)]();\n".
+    "  ".KBD."[x]|=2*IS_TAP(x);\n".
+    "  ".KBD."[x]&=~1;\n".
+    "  ".KBD."[x]&=~4;\n".
     " };\n".
     "};\n\n"
 
