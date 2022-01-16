@@ -164,7 +164,7 @@ sub generator {
   $T2.=" if(!rel) {\n  switch(key) {\n\n";
 
   # keyup events
-  my $T3=" } else {".BUSY."-=".BUSY.">0;\n".
+  my $T3=" } else {\n".
     "\n  switch(key) {\n\n";
 
   # keyheld functions
@@ -211,7 +211,6 @@ sub generator {
         KBD."[K_$name]&2));\n".
 
       "   if(IS_TAP(K_$name)) {\n".
-      "   ".BUSY."++;\n".
       "    $onDown;\n  };\n".
 
       "   break;\n\n";
@@ -220,11 +219,12 @@ sub generator {
 
     # onrel table
 
-    $T3.="  case $kcode:\n  $onUp;\n";
+    $T3.="  case $kcode:\n";
 
     $T3.=
       "   ".KBD."[K_$name]&=~3;\n".
-      "   ".KBD."[K_$name]|=4;break;\n";
+      "   ".KBD."[K_$name]|=4;\n".
+      "   $onUp;\n   break;";
 
 # ---   *   ---   *   ---
 
@@ -258,8 +258,10 @@ sub generator {
 
   # ^add caller def
   $T5.="void keychk(void) {\n".
+    " ".BUSY."^=".BUSY.";\n".
     " for(int x=0;x<K_COUNT;x++) {\n".
     "  K_HEL_FUNCS[(x+1)*IS_HEL(x)]();\n".
+    "  ".BUSY."+=(".KBD."[x]&0b111)!=0;\n".
     "  ".KBD."[x]|=2*IS_TAP(x);\n".
     "  ".KBD."[x]&=~1;\n".
     "  ".KBD."[x]&=~4;\n".

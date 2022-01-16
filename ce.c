@@ -240,7 +240,7 @@ void tick(CLCK* c) {
   c->delta=c->fbeg - c->fend;
   c->fend=c->fbeg;
 
-  uint64_t m_flen=c->flen<<((!CE.evcnt)*3);
+  uint64_t m_flen=c->flen<<((!CE.evcnt)*2);
 
   if(c->delta<m_flen) {
     usleep(m_flen - c->delta);
@@ -284,9 +284,12 @@ void main(int argc,char** argv) {
   uint64_t* kbd_ptr=(uint64_t*) kbd;
   uint64_t btt=0x00;
 
+  // read in trash and discard it
+  read(STDIN_FILENO,kbd,KBD_SZ);
+  *kbd_ptr^=*kbd_ptr;
+
   // init the program clock
   CLCK clck=mkclck(
-
     0x8000,
 
     L"\x01A9\x01AA\x01AB\x01AC"
