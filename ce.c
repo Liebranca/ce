@@ -120,7 +120,7 @@ void badd(char* src) {
 // draw the buffer
 void brend(void) {
 
-  // wipe screen, reposition
+  // recycle mem
   char m[128];
 
   // dump lines on draw buffer
@@ -286,7 +286,14 @@ void main(int argc,char** argv) {
 
   // read in trash and discard it
   read(STDIN_FILENO,kbd,KBD_SZ);
-  *kbd_ptr^=*kbd_ptr;
+  { int d=8;while(d--) {
+      read(STDIN_FILENO,kbd,KBD_SZ);
+      *kbd_ptr^=*kbd_ptr;
+
+      usleep(0x8000);
+
+    };
+  };
 
   // init the program clock
   CLCK clck=mkclck(
