@@ -261,6 +261,8 @@ void tick(CLCK* c) {
 
 // ---   *   ---   *   ---
 
+#include "arstd.h"
+
 void main(int argc,char** argv) {
 
   do {
@@ -270,6 +272,23 @@ void main(int argc,char** argv) {
     };argv++;argc--;
 
   } while(argc);
+
+  char ctty[0x100];
+
+  { char* ex_argv[]={"tty"};
+    strcpy(ctty,ex(
+      sizeof(ex_argv)/sizeof(char*),ex_argv
+
+    )+8);ctty[0]++;
+
+  };
+
+  { char* ex_argv[]={"chvt",ctty};
+    ex(sizeof(ex_argv)/sizeof(char*),ex_argv);
+
+  };
+
+  exit(0);
 
   // open stdin for non-blocking io
   // also ensure we can use lycon chars
