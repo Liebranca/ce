@@ -20,6 +20,8 @@
   use lib $ENV{'ARPATH'}.'/avtomat/';
   use avt;
 
+  my $root=avt::root $ENV{'ARPATH'};chdir $root;
+
 # ---   *   ---   *   ---
 # some macros
 
@@ -89,6 +91,33 @@ sub KI {
 };
 
 # ---   *   ---   *   ---
+
+# parse *.k file into a list
+sub rdkfile {
+
+  my $fpath=shift;
+  if(!(-e $fpath)) {
+    print "Can't find $fpath";
+    exit;
+
+  };my $s=`cat $fpath`;
+  my $tap=(split "onTap\n",$s)[1];
+  $tap=(split "onHel\n",$tap)[0];
+
+  my $hel=(split "onHel\n",$s)[1];
+  $hel=(split "onRel\n",$hel)[0];
+
+  my $rel=(split "onRel\n",$s)[1];
+
+  for my $ev ($tap,$hel,$rel) {
+    if((index $ev,'None')>-1) {$ev='';};
+  };
+
+  return ($tap,$rel,$hel);
+
+};
+
+# ---   *   ---   *   ---
 # base table
 
   # 'key_name'=>[scancode,onDown,onUp,onHeld]
@@ -112,21 +141,15 @@ sub KI {
 
     ],
 
-    'ARGT',[KI('right'),
-    'if(IS_HEL(K_LALT)) {'.
-    KBD.'[K_ARGT]&=~0b111;swtty(1,'.CTTY.');}',
-
-    '',
-    CX.'+='.CX.'<('.CXMX.');',
+    'ARGT',[
+      KI('right'),
+      rdkfile('./ce/keys/right.k')
 
     ],
 
-    'ALFT',[KI('left'),
-    'if(IS_HEL(K_LALT)) {'.
-    KBD.'[K_ALFT]&=~0b111;swtty(-1,'.CTTY.');}',
-    '',
-
-    CX.'-='.CX.'>('.CXMN.');',
+    'ALFT',[
+      KI('left'),
+      rdkfile('./ce/keys/left.k')
 
     ],
 
@@ -421,8 +444,6 @@ sub generator {
 };
 
 # ---   *   ---   *   ---
-
-my $root=avt::root $ENV{'ARPATH'};chdir $root;
 
 avt::wrcboil_h(
   '/ce/',

@@ -200,13 +200,6 @@ int iopen(void) {
   badd("\e[2J\e[H\e[?25l");
   CE.cursor.x=0;CE.cursor.y=0;
 
-  // get current tty
-  { char* ex_argv[]={"tty"};
-    strcpy(CE.ctty,ex(PASS_ARGV(ex_argv))+8);
-    CE.ctty[0x0F]=0x00;
-
-  };
-
   return 0;
 
 // ^the undo for it
