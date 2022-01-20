@@ -190,3 +190,23 @@ char* ex(int argc,char** argv) {
 };
 
 // ---   *   ---   *   ---
+
+void swtty(int dir,char* ctty) {
+
+  { char* ex_argv[]={"tty"};
+    strcpy(ctty,ex(PASS_ARGV(ex_argv))+8);
+    ctty[0x0F]=0x00;
+
+  };int ntty=ctty[0]-0x30;ntty+=dir;
+
+       if(ntty>6) {ntty=1;}
+  else if(ntty<1) {ntty=6;};ctty[0]=ntty+0x30;
+
+  { char* ex_argv[]={"chvt",ctty};
+    ex(PASS_ARGV(ex_argv));
+
+  };
+
+};
+
+// ---   *   ---   *   ---

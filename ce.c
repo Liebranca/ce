@@ -35,6 +35,8 @@
   #include <sys/types.h>
   #include <sys/stat.h>
 
+  #include "arstd.h"
+
 // ---   *   ---   *   ---
 // just to make sure we don't
 // exit without restoring term
@@ -70,6 +72,7 @@ void onsegv(int sig) {
 
     } cursor;
 
+    char ctty[16];
     int kbd[128];
 
     struct {
@@ -197,6 +200,13 @@ int iopen(void) {
   badd("\e[2J\e[H\e[?25l");
   CE.cursor.x=0;CE.cursor.y=0;
 
+  // get current tty
+  { char* ex_argv[]={"tty"};
+    strcpy(CE.ctty,ex(PASS_ARGV(ex_argv))+8);
+    CE.ctty[0x0F]=0x00;
+
+  };
+
   return 0;
 
 // ^the undo for it
@@ -261,8 +271,6 @@ void tick(CLCK* c) {
 
 // ---   *   ---   *   ---
 
-#include "arstd.h"
-
 void main(int argc,char** argv) {
 
   do {
@@ -272,23 +280,6 @@ void main(int argc,char** argv) {
     };argv++;argc--;
 
   } while(argc);
-
-  char ctty[0x100];
-
-  { char* ex_argv[]={"tty"};
-    strcpy(ctty,ex(
-      sizeof(ex_argv)/sizeof(char*),ex_argv
-
-    )+8);ctty[0]++;
-
-  };
-
-  { char* ex_argv[]={"chvt",ctty};
-    ex(sizeof(ex_argv)/sizeof(char*),ex_argv);
-
-  };
-
-  exit(0);
 
   // open stdin for non-blocking io
   // also ensure we can use lycon chars
@@ -326,7 +317,7 @@ void main(int argc,char** argv) {
 // ---   *   ---   *   ---
 
   // looparino
-  );int PANIC_TIMER=1600;do {
+  );int PANIC_TIMER=360;do {
 
     // render last frame
     brend();

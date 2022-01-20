@@ -31,6 +31,7 @@
     KBD    => "${ \STRUCT }.kbd",
     WDIM   => "${ \STRUCT }.wsz.ws_",
     BUSY   => "${ \STRUCT }.evcnt",
+    CTTY   => "${ \STRUCT }.ctty",
 
   };use constant {
     CY     => "${ \CURSOR }.y",
@@ -95,28 +96,37 @@ sub KI {
   my @KEYMAP=(
 
     # quick exit for testing
-    'GESC',[KI('escape'),'','exit(0);','',
+    'ESC' ,[KI('escape'),'','exit(0);','',],
 
-    ],
+    # modifiers
+    'LALT',[KI('LAlt'),'','',''],
 
     # movement keys
-    'GFWD',[KI('up'),'','',
+    'AUP' ,[KI('up'),'','',
       CY.'-='.CY.'>('.CYMN.');',
 
     ],
 
-    'GBAK',[KI('down'),'','',
+    'ADWN',[KI('down'),'','',
       CY.'+='.CY.'<('.CYMX.');',
 
     ],
 
-    'GRGT',[KI('right'),'','',
-      CX.'+='.CX.'<('.CXMX.');',
+    'ARGT',[KI('right'),
+    'if(IS_HEL(K_LALT)) {'.
+    KBD.'[K_ARGT]&=~0b111;swtty(1,'.CTTY.');}',
+
+    '',
+    CX.'+='.CX.'<('.CXMX.');',
 
     ],
 
-    'GLFT',[KI('left'),'','',
-      CX.'-='.CX.'>('.CXMN.');',
+    'ALFT',[KI('left'),
+    'if(IS_HEL(K_LALT)) {'.
+    KBD.'[K_ALFT]&=~0b111;swtty(-1,'.CTTY.');}',
+    '',
+
+    CX.'-='.CX.'>('.CXMN.');',
 
     ],
 
@@ -153,6 +163,13 @@ sub generator {
     "#define IS_REL(x) ((".KBD."[(x)]&0b100)>>2)\n".
 
     "\n";
+
+  my $utilfuncs=''.
+
+    'void kbdcl(void) {'."\n".
+    ' memset('.KBD.",\n".
+    ' 0,sizeof('.KBD.')/sizeof('.KBD.'[0]));'."\n".
+    "};\n";
 
   my @lists=();{
 
@@ -339,16 +356,26 @@ sub generator {
 
 # ---   *   ---   *   ---
 
-  my $result=$CODE_TO_KEY.$macros.( $evfuncs->[3] );
+  my $result=$CODE_TO_KEY.$macros.$utilfuncs;
 
   # close lists
-  for(my $j=0;$j<@lists;$j++) {
+  for(my $j=0;$j<2;$j++) {
+    $lists[$j]->[0]++;
+    $lists[$j]=avt::clist($lists[$j]);
+
+    $result.=$lists[$j]->[3];
+
+  };$result.=( $evfuncs->[3] );
+
+  for(my $j=2;$j<@lists;$j++) {
     $lists[$j]->[0]++;
     $lists[$j]=avt::clist($lists[$j]);
 
     $result.=$lists[$j]->[3];
 
   };
+
+# ---   *   ---   *   ---
 
   # ^add caller def
   $result.= $KEYSET.
