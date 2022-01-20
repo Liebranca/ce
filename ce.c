@@ -73,7 +73,10 @@ void onsegv(int sig) {
     } cursor;
 
     char ctty[16];
+
     int kbd[128];
+    char evstack[8];
+    char evstack_i;
 
     struct {
       char lines[64][128];

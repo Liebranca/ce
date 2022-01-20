@@ -33,6 +33,8 @@
     KBD    => "${ \STRUCT }.kbd",
     WDIM   => "${ \STRUCT }.wsz.ws_",
     BUSY   => "${ \STRUCT }.evcnt",
+    EVSTK  => "${ \STRUCT }.evstack",
+    EVCNT  => "${ \STRUCT }.evstack_i",
     CTTY   => "${ \STRUCT }.ctty",
 
   };use constant {
@@ -276,6 +278,45 @@ sub generator {
 
 # ---   *   ---   *   ---
 
+  my $EVSTACK=<<'EOF'
+
+void evpop(char key) {
+  char idex=0;
+  for(char x=0;x<CE.evstack_i;x++) {
+    if(CE.evstack[x]==key) {
+      idex=x;
+      break;
+
+    };
+  };CE.evstack[idex]=0x00;
+
+  while(idex<CE.evstack_i) {
+    CE.evstack[idex]=CE.evstack[idex+1];
+    idex++;
+
+  };CE.evstack_i--;
+};
+
+void evpush(char key) {
+  char do_push=1;
+  for(char x=0;x<CE.evstack_i;x++) {
+    if(CE.evstack[x]==key) {
+      do_push=0;
+      break;
+
+    };
+  };if(do_push) {
+    CE.evstack[CE.evstack_i]=key;
+    CE.evstack_i++;
+
+  };
+};
+
+EOF
+;
+
+# ---   *   ---   *   ---
+
   # keydown events
   my $KEYSET="void keyset(char key,char rel) {\n";
   $KEYSET.=
@@ -288,20 +329,20 @@ sub generator {
     "  ".KBD."[x]|=1*(!IS_HEL(x));\n".
 
     "  K_TAP_FUNCS[(x+1)*IS_TAP(x)]();\n".
-
-    "  return;\n\n";
+    "  evpush(x);\n";
 
 # ---   *   ---   *   ---
 
   # keyup events
   $KEYSET.=" } else {\n".
 
-    "   ".KBD."[x]&=~3;\n".
-    "   ".KBD."[x]|=4;\n".
+    "  ".KBD."[x]&=~3;\n".
+    "  ".KBD."[x]|=4;\n".
 
     "  K_REL_FUNCS[x+1]();\n".
+    "  evpop(x);\n".
 
-    " };\n};\n\n";
+    " };\n\n};\n\n";
 
 # ---   *   ---   *   ---
 
@@ -401,12 +442,16 @@ sub generator {
 # ---   *   ---   *   ---
 
   # ^add caller def
-  $result.= $KEYSET.
+  $result.= $EVSTACK.$KEYSET.
 
     "void keychk(void) {\n".
+    " ".EVSTK.'['.EVCNT."]=0x00;\n".
     " ".BUSY."^=".BUSY.";\n".
 
-    " for(int x=0;x<K_COUNT;x++) {\n".
+    ' char* ev='.EVSTK."+0;\n".
+
+    " while(*ev) {\n".
+    "  char x=*ev;\n".
     "  K_HEL_FUNCS[(x+1)*IS_HEL(x)]();\n".
 
     "  ".BUSY."+=(".KBD."[x]&0b111)!=0;\n".
@@ -414,6 +459,8 @@ sub generator {
     "  ".KBD."[x]|=2*IS_TAP(x);\n".
     "  ".KBD."[x]&=~1;\n".
     "  ".KBD."[x]&=~4;\n".
+
+    "  ev++;\n".
 
     " };\n".
     "};\n\n"
