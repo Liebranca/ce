@@ -66,6 +66,8 @@ void onsegv(int sig) {
     char buff[CEB_SZ];
     size_t buff_i;
 
+    char ti;
+
     struct {
       int x;
       int y;
@@ -159,7 +161,14 @@ void brend(void) {
     CE.buff,
     CE.buff_i
 
-  );bcl();badd("\e[?25l");
+  );bcl();
+
+  { char tmp[0x40];sprintf(tmp,
+    "\e[?25l%c",CE.ti
+
+    );badd(tmp);
+
+  };
 };
 
 // ---   *   ---   *   ---

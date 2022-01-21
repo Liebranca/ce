@@ -120,6 +120,59 @@ sub rdkfile {
 };
 
 # ---   *   ---   *   ---
+# read glyph table
+
+sub tifunc {
+  my ($lc,$uc,$mr)=@_;
+  for my $c($lc,$uc,$mr) {
+    $c=sprintf "\\x%02X",ord($c);
+
+  };
+
+  my $s=<<"EOF"
+
+  char table[4]="$lc$uc$mr";
+  CE.ti=table[
+    (IS_HEL(K_LSHIFT))
+   +(IS_HEL(K_RALT)<<1)
+
+  ];
+
+EOF
+; return $s;
+
+};
+
+sub rdti {
+
+  my @table=split "\n",`cat ./ce/keys/ti`;
+  my @map=();
+
+  while(@table) {
+    my $line=shift @table;
+    if(!$line) {next;};
+
+    my (
+      $name,
+      $lc,$uc,$mr
+
+    )=split ' ',$line;
+
+    my $fullname='TI'.( uc $name );
+
+    my $onDown=tifunc($lc,$uc,$mr);
+
+    push @map,$fullname;
+    push @map,[KI($name),$onDown,
+      '','K_TAP_FUNC_'.$fullname.'();'
+
+    ];
+
+  };return @map;
+
+};
+
+# ---   *   ---   *   ---
 # base table
 
   # 'key_name'=>[scancode,onDown,onUp,onHeld]
@@ -131,6 +184,8 @@ sub rdkfile {
 
     # modifiers
     'LALT',[KI('LAlt'),'','',''],
+    'RALT',[KI('RAlt'),'','',''],
+    'LSHIFT',[KI('LShift'),'','',''],
 
     # movement keys
     'AUP' ,[KI('up'),'','',
@@ -169,7 +224,7 @@ sub rdkfile {
 #
 #    'ERET',[KI("ret"),undef,''],
 
-  );
+  );push @KEYMAP,rdti;
 
 # ---   *   ---   *   ---
 
