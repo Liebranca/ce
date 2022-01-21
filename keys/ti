@@ -47,3 +47,4 @@ comma   , ; ;
 dot     . : :
 under   - _ _
 
+space   _ _ _

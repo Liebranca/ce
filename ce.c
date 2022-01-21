@@ -79,6 +79,7 @@ void onsegv(int sig) {
     int kbd[128];
     char evstack[8];
     char evstack_i;
+    char evlinger;
 
     struct {
       char lines[64][128];
@@ -163,10 +164,20 @@ void brend(void) {
 
   );bcl();
 
-  { char tmp[0x40];sprintf(tmp,
+// ---   *   ---   *   ---
+// text input
+
+  if(CE.ti) {
+    char tmp[0x40];sprintf(tmp,
     "\e[?25l%c",CE.ti
 
-    );badd(tmp);
+    );badd(tmp);CE.ti=0x00;
+    CE.cursor.x++;
+    if(CE.cursor.x>=(CE.wsz.ws_col-1)) {
+      CE.cursor.x=0;
+      CE.cursor.y+=CE.cursor.y<(CE.wsz.ws_row-1);
+
+    };
 
   };
 };
@@ -255,7 +266,11 @@ void tick(CLCK* c) {
   c->delta=c->fbeg - c->fend;
   c->fend=c->fbeg;
 
-  uint64_t m_flen=c->flen<<((!CE.evcnt)*2);
+  uint64_t m_flen=
+    c->flen
+  <<((!CE.evcnt)*2*!CE.evlinger);
+
+  CE.evlinger-=CE.evlinger>0;
 
   if(c->delta<m_flen) {
     usleep(m_flen - c->delta);
@@ -305,14 +320,14 @@ void main(int argc,char** argv) {
       read(STDIN_FILENO,kbd,KBD_SZ);
       *kbd_ptr^=*kbd_ptr;
 
-      usleep(0x8000);
+      usleep(0x6000);
 
     };
   };
 
   // init the program clock
   CLCK clck=mkclck(
-    0x8000,
+    0x6000,
 
     L"\x01A9\x01AA\x01AB\x01AC"
     L"\x01AD\x01AE\x01AF\x01B0",
@@ -322,7 +337,7 @@ void main(int argc,char** argv) {
 // ---   *   ---   *   ---
 
   // looparino
-  );int PANIC_TIMER=360;do {
+  );int PANIC_TIMER=1600;do {
 
     // render last frame
     brend();

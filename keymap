@@ -131,6 +131,7 @@ sub tifunc {
 
   my $s=<<"EOF"
 
+  CE.evlinger+=8;CE.evlinger&=0xF;
   char table[4]="$lc$uc$mr";
   CE.ti=table[
     (IS_HEL(K_LSHIFT))
@@ -159,14 +160,18 @@ sub rdti {
     )=split ' ',$line;
 
     my $fullname='TI'.( uc $name );
+    if($name eq 'space') {
+      $lc=$uc=$mr=' ';
+
+    };
 
     my $onDown=tifunc($lc,$uc,$mr);
 
     push @map,$fullname;
-    push @map,[KI($name),$onDown,
-      '','K_TAP_FUNC_'.$fullname.'();'
+    push @map,[KI($name),
+      $onDown,'',''
 
-    ];
+    ]; #'K_TAP_FUNC_'.$fullname.'();'
 
   };return @map;
 
@@ -188,13 +193,15 @@ sub rdti {
     'LSHIFT',[KI('LShift'),'','',''],
 
     # movement keys
-    'AUP' ,[KI('up'),'','',
-      CY.'-='.CY.'>('.CYMN.');',
+    'AUP' ,[
+      KI('up'),
+      rdkfile('./ce/keys/up.k')
 
     ],
 
-    'ADWN',[KI('down'),'','',
-      CY.'+='.CY.'<('.CYMX.');',
+    'ADWN',[
+      KI('down'),
+      rdkfile('./ce/keys/down.k')
 
     ],
 
@@ -224,7 +231,8 @@ sub rdti {
 #
 #    'ERET',[KI("ret"),undef,''],
 
-  );push @KEYMAP,rdti;
+  );my $NON_TI=int((@KEYMAP)/2);
+  push @KEYMAP,rdti;
 
 # ---   *   ---   *   ---
 
@@ -381,7 +389,7 @@ EOF
     " if(!rel) {\n".
 
     "  ".KBD."[x]&=~1;\n".
-    "  ".KBD."[x]|=1*(!IS_HEL(x));\n".
+    "  ".KBD."[x]|=(1*(!IS_HEL(x))|(x>=$NON_TI));\n".
 
     "  K_TAP_FUNCS[(x+1)*IS_TAP(x)]();\n".
     "  evpush(x);\n";
@@ -391,7 +399,7 @@ EOF
   # keyup events
   $KEYSET.=" } else {\n".
 
-    "  ".KBD."[x]&=~3;\n".
+    "  ".KBD."[x]&=~(0xFF03);\n".
     "  ".KBD."[x]|=4;\n".
 
     "  K_REL_FUNCS[x+1]();\n".
@@ -504,10 +512,17 @@ EOF
     " ".BUSY."^=".BUSY.";\n".
 
     ' char* ev='.EVSTK."+0;\n".
+    " int repeat=0;\n".
 
     " while(*ev) {\n".
     "  char x=*ev;\n".
-    "  K_HEL_FUNCS[(x+1)*IS_HEL(x)]();\n".
+
+    "  int ind_repeat=(".KBD."[x]&0xFF00)>>8;".
+    "  ".KBD."[x]+=(1*(ind_repeat<4))<<8;".
+
+    "  repeat=(repeat!=0) || (ind_repeat==4);\n".
+
+    "  K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat]();\n".
 
     "  ".BUSY."+=(".KBD."[x]&0b111)!=0;\n".
 
