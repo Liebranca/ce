@@ -185,7 +185,7 @@ sub rdti {
   my @KEYMAP=(
 
     # quick exit for testing
-    'ESC' ,[KI('escape'),'','exit(0);','',],
+    'ESC' ,[KI('escape'),'','dumpf();exit(0);','',],
 
     # modifiers
     'LALT',[KI('LAlt'),'','',''],

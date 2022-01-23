@@ -17,77 +17,29 @@
   #include <string.h>
   #include <stdio.h>
 
-  #include <inttypes.h>
-
-  #include <fcntl.h>
-  #include <termios.h>
-  #include <unistd.h>
-
-  #include <locale.h>
-  #include <time.h>
-
-  #include <wchar.h>
-
-  #include <dirent.h>
-  #include <limits.h>
-  #include <linux/kd.h>
-  #include <sys/ioctl.h>
-  #include <sys/types.h>
-  #include <sys/stat.h>
-
   #include "arstd.h"
 
-// ---   *   ---   *   ---
-// just to make sure we don't
-// exit without restoring term
-  #include <signal.h>
-
-void onsegv(int sig) {
-  printf(
-    "\n!!(0): "
-    "I messed up the math somewhere\n");
-
-  exit(1);
-
-};
-
-// ---   *   ---   *   ---
-// constants
-  #define KBD_SZ 0x08
-  #define CEB_SZ 0x1000
+  #include "clock.h"
+  #include "display.h"
+  #include "keyboard.h"
 
 // ---   *   ---   *   ---
 // global state
 
   typedef struct {
-    struct termios restore;
-    struct winsize wsz;
-
-    char buff[CEB_SZ];
-    size_t buff_i;
-
-    char ti;
-
-    struct {
-      int x;
-      int y;
-
-    } cursor;
 
     char ctty[16];
-
-    int kbd[128];
-    char evstack[8];
-    char evstack_i;
-    char evlinger;
 
     struct {
       char lines[64][128];
 
-    } render;
+    } file;
 
     int mode;
-    size_t evcnt;
+
+    KBD* kbd;
+    DPY* dpy;
+    CLK* clk;
 
   } STRUCT_CE;static STRUCT_CE CE={0};
 
@@ -100,194 +52,44 @@ void onsegv(int sig) {
   };
 
 // ---   *   ---   *   ---
-// fwd decls
-  void iclose(void);
-
-// ---   *   ---   *   ---
-// buffer utils
-
-// manual cat
-void badd(char* src) {
-  strncpy(
-    CE.buff+CE.buff_i,
-    src,
-
-    CEB_SZ-CE.buff_i
-
-  );CE.buff_i+=strlen(src);
-  CE.buff_i&=CEB_SZ-1;
-
-// buffer wipe
-};void bcl(void) {
-  memset(CE.buff,0,CEB_SZ);
-  CE.buff_i^=CE.buff_i;
-
-};
-
-// ---   *   ---   *   ---
-
-// draw the buffer
-void brend(void) {
-
-  // recycle mem
-  char m[128];
-
-  // dump lines on draw buffer
-  for(int y=0;y<CE.wsz.ws_row;y++) {
-
-    if(!CE.render.lines[y]) {continue;}
-
-    sprintf(m,
-      "\e[%u;1H%s",
-
-      y+1,CE.render.lines[y]
-
-    );badd(m);
-    memset(CE.render.lines[y],0,128);
-
-  };
-
-// ---   *   ---   *   ---
-
-  // move cursor to pos and unhide
-  sprintf(m,
-    "\e[%u;%uH\e[?25h",
-    CE.cursor.y+1,
-    CE.cursor.x+1
-
-  );badd(m);
-
-  write(
-    STDOUT_FILENO,
-    CE.buff,
-    CE.buff_i
-
-  );bcl();
-
-// ---   *   ---   *   ---
-// text input
-
+/*
+  // text input
   if(CE.ti) {
-    char tmp[0x40];sprintf(tmp,
-    "\e[?25l%c",CE.ti
 
-    );badd(tmp);CE.ti=0x00;
+    CE.file.lines[CE.cursor.y][CE.cursor.x]=CE.ti;
+
+    strcpy(
+      CE.render.lines[CE.cursor.y],
+      CE.file.lines[CE.cursor.y]
+
+    );
+
+    CE.ti=0x00;
+
     CE.cursor.x++;
     if(CE.cursor.x>=(CE.wsz.ws_col-1)) {
       CE.cursor.x=0;
       CE.cursor.y+=CE.cursor.y<(CE.wsz.ws_row-1);
 
     };
-
   };
-};
-
+*/
 // ---   *   ---   *   ---
-// term utils
+// file handling
 
-// open stdin raw
-int iopen(void) {
+void dumpf(void) {
+  FILE* f=fopen("./test","w+");
+  for(int y=0;y<64;y++) {
+    char* line=CE.file.lines[y];
+    if(*line) {
+      fwrite(line,strlen(line),sizeof(char),f);
 
-  if(!isatty(STDIN_FILENO)) {
-    printf("STDIN is not a tty\n");
-    return 1;
-
+    };
   };
 
-  // save original attrs
-  struct termios term={0};
-  tcgetattr(STDIN_FILENO,&CE.restore);
-
-  // ensure unexpected segfaults
-  // cant lock me in raw mode
-  signal(SIGSEGV,onsegv);
-  atexit(iclose);
-
-  // put tty in raw mode
-  term.c_cc[VTIME]=0;
-  term.c_cc[VMIN]=0;
-
-  term.c_cflag|=(CS8);
-  term.c_oflag&=~(OPOST);
-  term.c_iflag&=~(BRKINT|INPCK|ISTRIP|IXON|ICRNL);
-  term.c_lflag&=~(ICANON|ECHO|IEXTEN|ISIG);
-  tcsetattr(STDIN_FILENO,TCSAFLUSH,&term);
-
-  // we dont want to read no ascii codes
-  ioctl(STDIN_FILENO,KDSKBMODE,K_MEDIUMRAW);
-
-  // get screen size
-  ioctl(STDOUT_FILENO,TIOCGWINSZ,&CE.wsz);
-
-  // clear screen and reposition
-  badd("\e[2J\e[H\e[?25l");
-  CE.cursor.x=0;CE.cursor.y=0;
-
-  return 0;
-
-// ^the undo for it
-};void iclose(void) {
-  ioctl(STDIN_FILENO,KDSKBMODE,K_XLATE);
-  tcsetattr(STDIN_FILENO,TCSAFLUSH,&CE.restore);
-  write(STDOUT_FILENO,"\e[2J\e[H",7);
+  fclose(f);
 
 };
-
-// ---   *   ---   *   ---
-// framecap utils
-
-typedef struct {
-
-  // frame measuring
-  uint64_t fbeg;
-  uint64_t fend;
-  uint64_t flen;
-  uint64_t delta;
-
-  // chars for drawing
-  wchar_t* v;
-  uint32_t vix;
-  uint32_t vsz;
-
-  // constructor
-} CLCK;CLCK mkclck(
-  uint64_t flen,
-  wchar_t* v,
-  uint32_t vsz
-
-) {CLCK c={0,clock(),flen,0,v,0,vsz};return c;};
-
-// ---   *   ---   *   ---
-
-// args= ptr to clock instance
-// accumulate deltas and sleep if need be
-void tick(CLCK* c) {
-  c->fbeg=(uint64_t) clock();
-  c->delta=c->fbeg - c->fend;
-  c->fend=c->fbeg;
-
-  uint64_t m_flen=
-    c->flen
-  <<((!CE.evcnt)*2*!CE.evlinger);
-
-  CE.evlinger-=CE.evlinger>0;
-
-  if(c->delta<m_flen) {
-    usleep(m_flen - c->delta);
-    c->delta=0;
-
-  };c->vix++;c->vix&=(c->vsz-1);
-
-};
-
-// ---   *   ---   *   ---
-// keyhandling
-
-// generated imports
-  #include "keymap.h"
-  #include "chartab.h"
-
-// [manually written code goes here]
 
 // ---   *   ---   *   ---
 
@@ -301,32 +103,14 @@ void main(int argc,char** argv) {
 
   } while(argc);
 
-  // open stdin for non-blocking io
-  // also ensure we can use lycon chars
-  iopen();setlocale(LC_ALL,"");
+  // open display
+  CE.dpy=dpynt(STDOUT_FILENO);
 
-// ---   *   ---   *   ---
-
-  // set aside memory for keyboard input
-  char kbd[KBD_SZ];
-
-  // shorthands/convenience
-  uint64_t* kbd_ptr=(uint64_t*) kbd;
-  uint64_t btt=0x00;
-
-  // read in trash and discard it
-  read(STDIN_FILENO,kbd,KBD_SZ);
-  { int d=8;while(d--) {
-      read(STDIN_FILENO,kbd,KBD_SZ);
-      *kbd_ptr^=*kbd_ptr;
-
-      usleep(0x6000);
-
-    };
-  };
+  // open input handler  
+  CE.kbd=keynt(STDIN_FILENO);
 
   // init the program clock
-  CLCK clck=mkclck(
+  CE.clk=clknt(
     0x6000,
 
     L"\x01A9\x01AA\x01AB\x01AC"
@@ -334,50 +118,37 @@ void main(int argc,char** argv) {
 
     8
 
+  );
+
 // ---   *   ---   *   ---
+
+  int* sc_dim=gtwsz(CE.dpy);
 
   // looparino
-  );int PANIC_TIMER=1600;do {
+  int PANIC_TIMER=60;do {
 
     // render last frame
-    brend();
+    brend(CE.dpy);
 
     // update the draw clock and tick
-    sprintf(CE.render.lines[CE.wsz.ws_row-1],
-        "%lc | EV %02"PRIX8,clck.v[clck.vix],CE.evcnt
+    sprintf(gtrline(CE.dpy,sc_dim[1]-1),
+        "%lc",clkdr(clck)
 
-    );tick(&clck);
+    );tick(CE.clk,gtevcnt(CE.kbd));
 
-// ---   *   ---   *   ---
-
-    // capture this frames input
-    read(STDIN_FILENO,kbd,KBD_SZ);
-
-    // process input
-    while(*kbd_ptr) {
-
-      char key_id=(*kbd_ptr)&0x7F;
-
-      key_id*=
-        key_id<( sizeof(KEY_NAMES)/sizeof(char*) );
-
-      char key_rel=((*kbd_ptr)&0xFF)==key_id+0x80;
-
-      // print the code for debug
-      sprintf(
-        CE.render.lines[CE.wsz.ws_row-1]+10,
-
-        " | %02"PRIX8" | %s %d\e[K",key_id,
-        KEY_NAMES[key_id], key_rel
-
-      );keyset(key_id,key_rel);
-      *kbd_ptr=(*kbd_ptr)>>8;
-
-    };keychk();
+    // run event loop
+    keyrd(CE.kbd);
 
 // ---   *   ---   *   ---
+// cleanup
 
   } while(PANIC_TIMER--);
+
+  free(CE.clk);dpycl(CE.dpy);
+
+  free(CE.dpy);
+  free(CE.kbd);
+
   return;
 
 };
