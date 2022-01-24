@@ -11,17 +11,11 @@ extern "C" {
   #include <inttypes.h>
   #include <wchar.h>
 
-
-// ---   *   ---   *   ---
-// types
-
-typedef struct CLK CLK;
-
 // ---   *   ---   *   ---
 // methods
 
 // nit a new program clock
-CLK* clkmk(
+void clkmk(
   uint64_t flen,
   const wchar_t* v,
   uint32_t vsz
@@ -29,10 +23,10 @@ CLK* clkmk(
 );
 
 // run the clock for this frame
-void tick(CLK* c,size_t busy,char* linger);
+void tick(size_t busy,char* linger);
 
 // get draw-clock char
-wchar_t clkdr(CLK* c);
+wchar_t clkdr(void);
 
 // ---   *   ---   *   ---
 

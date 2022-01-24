@@ -37,10 +37,6 @@
 
     int mode;
 
-    KBD* kbd;
-    DPY* dpy;
-    CLK* clk;
-
   } STRUCT_CE;static STRUCT_CE CE={0};
 
 // ---   *   ---   *   ---
@@ -104,13 +100,13 @@ void main(int argc,char** argv) {
   } while(argc);
 
   // open display
-  CE.dpy=dpynt(STDOUT_FILENO);
+  dpynt(STDOUT_FILENO);
 
   // open input handler  
-  CE.kbd=keynt(STDIN_FILENO);
+  keynt(STDIN_FILENO);
 
   // init the program clock
-  CE.clk=clknt(
+  clknt(
     0x6000,
 
     L"\x01A9\x01AA\x01AB\x01AC"
@@ -122,7 +118,7 @@ void main(int argc,char** argv) {
 
 // ---   *   ---   *   ---
 
-  int* sc_dim=gtwsz(CE.dpy);
+  int* sc_dim=gtwsz();
 
   // looparino
   int PANIC_TIMER=60;do {
@@ -131,24 +127,20 @@ void main(int argc,char** argv) {
     brend(CE.dpy);
 
     // update the draw clock and tick
-    sprintf(gtrline(CE.dpy,sc_dim[1]-1),
-        "%lc",clkdr(clck)
+    sprintf(gtrline(sc_dim[1]-1),
+        "%lc",clkdr()
 
-    );tick(CE.clk,gtevcnt(CE.kbd));
+    );tick(gtevcnt());
 
     // run event loop
-    keyrd(CE.kbd);
+    keyrd();
 
 // ---   *   ---   *   ---
 // cleanup
 
   } while(PANIC_TIMER--);
 
-  free(CE.clk);dpycl(CE.dpy);
-
-  free(CE.dpy);
-  free(CE.kbd);
-
+  dpycl();
   return;
 
 };

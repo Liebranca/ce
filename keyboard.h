@@ -7,19 +7,26 @@ extern "C" {
 
 // ---   *   ---   *   ---
 // types
-typedef struct KBD KBD;
+
+#ifndef NIHIL_FUNC
+#define NIHIL_FUNC
+typedef void(*nihil)(void);
+#endif
 
 // ---   *   ---   *   ---
 // methods
 
 // start the input handler
-KBD* keynt(int fd);
+int keynt(int fd);
+
+// set key callback
+void keycall(char key,int mode,nihil func);
 
 // capture input
-void keyrd(KBD* kbd);
+void keyrd(void);
 
 // get events left in queue
-int gtevcnt(KBD* kbd);
+int gtevcnt(void);
 
 // ---   *   ---   *   ---
 

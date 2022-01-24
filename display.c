@@ -59,60 +59,92 @@ typedef struct DPY {
 
   int fd;
 
-};
+};static DPY dpy={0};
 
 // ---   *   ---   *   ---
 // getters
 
-char** gtrline(DPY* dpy,size_t idex) {
-  return dpy->rlines[idex&(RLINE_SZY-1)];
+char** gtrline(size_t idex) {
+  return dpy.rlines[idex&(RLINE_SZY-1)];
 
 };
 
-int* gtcursor(DPY* dpy) {return dpy->cursor.f;};
-int* gtwsz(DPY* dpy) {return dpy->wsz.f;};
+int* gtcursor(void) {return dpy.cursor.f;};
+int* gtwsz(void) {return dpy.wsz.f;};
+
+// ---   *   ---   *   ---
+// cursor movement
+
+void stcursor(int x,int y) {
+  dpy.cursor.x=x;dpy.cursor.y=y;
+  cursormv(0,0);
+
+};void cursormv(int x,int y) {
+
+  // unconditionally add
+  dpy.cursor.x+=x;dpy.cursor.y+=y;
+
+  // cap x
+  if(dpy.cursor.x>(dpy.wsz.x-1)) {
+    dpy.cursor.x=(dpy.wsz.x-1);
+
+  } else if(dpy.cursor.x<0) {
+    dpy.cursor.x=0;
+
+  };
+
+  // cap y
+  if(dpy.cursor.y>(dpy.wsz.y-1)) {
+    dpy.cursor.y=(dpy.wsz.y-1);
+
+  } else if(dpy.cursor.y<0) {
+    dpy.cursor.y=0;
+
+  };
+
+};
 
 // ---   *   ---   *   ---
 // buffer utils
 
 // manual cat
-void badd(DPY* dpy,char* src) {
+void badd(char* src) {
   strncpy(
-    dpy->rbuff+dpy->rbuff_i,
+    dpy.rbuff+dpy.rbuff_i,
     src,
 
-    RBUFF_SZ-dpy->rbuff_i
+    RBUFF_SZ-dpy.rbuff_i
 
-  );dpy->rbuff_i+=strlen(src);
-  dpy->rbuff_i&=RBUFF_SZ-1;
+  );dpy.rbuff_i+=strlen(src);
+  dpy.rbuff_i&=RBUFF_SZ-1;
 
 // buffer wipe
-};void bcl(DPY* dpy) {
-  memset(dpy->rbuff,0,RBUFF_SZ);
-  dpy->rbuff_i^=dpy->rbuff_i;
+};void bcl(void) {
+  memset(dpy.rbuff,0,RBUFF_SZ);
+  dpy.rbuff_i^=dpy.rbuff_i;
 
 };
 
 // ---   *   ---   *   ---
 
 // draw the buffer
-void dpyrend(DPY* dpy) {
+void dpyrend(void) {
 
   // recycle mem
   char m[128];
 
   // dump lines on draw buffer
-  for(int y=0;y<dpy->wsz.y;y++) {
+  for(int y=0;y<dpy.wsz.y;y++) {
 
-    if(!dpy->rlines[y]) {continue;}
+    if(!dpy.rlines[y]) {continue;}
 
     sprintf(m,
       "\e[%u;1H%s",
 
-      y+1,dpy->rlines[y]
+      y+1,dpy.rlines[y]
 
     );badd(dpy,m);
-    memset(dpy->rlines[y],0,128);
+    memset(dpy.rlines[y],0,128);
 
   };
 
@@ -121,52 +153,45 @@ void dpyrend(DPY* dpy) {
   // move cursor to pos and unhide
   sprintf(m,
     "\e[%u;%uH\e[?25h",
-    dpy->cursor.y+1,
-    dpy->cursor.x+1
+    dpy.cursor.y+1,
+    dpy.cursor.x+1
 
   );badd(dpy,m);
 
   write(
-    dpy->fd,
-    dpy->rbuff,
-    dpy->rbuff_i
+    dpy.fd,
+    dpy.rbuff,
+    dpy.rbuff_i
 
   );bcl(dpy);badd(dpy,"\e[?25l");
 };
 
 // ---   *   ---   *   ---
 
-// wsz=ptr to x,y screen size
-// cursor=ptr to x,y coords
-// lines=draw-to strarr
-
 // nit the display
-DPY* dpynt(int fd) {
+void dpynt(int fd) {
 
-  DPY* dpy=malloc(sizeof(DPY));
-  memset(dpy,0,sizeof(DPY));
+  memset(&dpy,0,sizeof(DPY));
 
-  dpy->fd=fd;
+  dpy.fd=fd;
 
   // get window size
   struct winsize w;
-  ioctl(dpy->fd,TIOCGWINSZ,&w);
-  dpy->wsz.x=w.ws_col;dpy->wsz.y=w.ws_row;
+  ioctl(dpy.fd,TIOCGWINSZ,&w);
+  dpy.wsz.x=w.ws_col;dpy.wsz.y=w.ws_row;
 
   // clear screen and reposition
   badd(dpy,"\e[2J\e[H\e[?25l");
-  dpy->cursor.x=0;dpy->cursor.y=0;
+  dpy.cursor.x=0;dpy.cursor.y=0;
 
   // ensure we can use lycon chars
   setlocale(LC_ALL,"");
 
-  return dpy;
-
 };
 
 // clear screen
-void dpycl(DPY* dpy) {
-  write(dpy->fd,"\e[2J\e[H",7);
+void dpycl(void) {
+  write(dpy.fd,"\e[2J\e[H",7);
 
 };
 

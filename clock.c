@@ -35,57 +35,50 @@ struct CLK {
   uint32_t vix;
   uint32_t vsz;
 
-};
+};static CLK c={0};
 
 // ---   *   ---   *   ---
 
 // constructor
-CLK* clknt(
+void clknt(
   uint64_t flen,
   const wchar_t* v,
   uint32_t vsz
 
 ) {
 
-  CLK* c=malloc(sizeof(CLK));
-  *c=(CLK) {0,clock(),flen,0,v,0,vsz};
-
-  printf("%ls\n",c->v);
+  memset(&c,0,sizeof(CLK));
+  c=(CLK) {0,clock(),flen,0,v,0,vsz};
 
   return c;
 
 };
 
 // ---   *   ---   *   ---
-
-// c=ptr to program clock
-// busy=event count
-// linger=back-to-sleep cooldown
+// busy=handles sleep for longer
 
 // frame-time calculator
-void tick(CLK* c,int busy) {
-  c->fbeg=(uint64_t) clock();
-  c->delta=c->fbeg-c->fend;
-  c->fend=c->fbeg;
+void tick(int busy) {
+  c.fbeg=(uint64_t) clock();
+  c.delta=c.fbeg-c.fend;
+  c.fend=c.fbeg;
 
-  uint64_t m_flen=c->flen<<((!busy)*2);
+  uint64_t m_flen=c.flen<<((!busy)*2);
 
-  if(c->delta<m_flen) {
-    usleep(m_flen-c->delta);
-    c->delta=0;
+  if(c.delta<m_flen) {
+    usleep(m_flen-c.delta);
+    c.delta=0;
 
-  };c->vix++;c->vix&=(c->vsz-1);
+  };c.vix++;c.vix&=(c.vsz-1);
 
 };
 
 // ---   *   ---   *   ---
 
-// c=ptr to program clock
-
 // return clock char at this frame
 // useless but cute
-wchar_t clkdr(CLK* c) {
-  return c->v[c->vix];
+wchar_t clkdr(void) {
+  return c.v[c.vix];
 
 };
 

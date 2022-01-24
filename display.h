@@ -6,29 +6,27 @@ extern "C" {
 #endif
 
 // ---   *   ---   *   ---
-// types
-typedef struct DPY DPY;
-
-// ---   *   ---   *   ---
 // methods
 
 // initialize display
-DPY* dpynt(int fd);
+void dpynt(int fd);
 
 // clear the screen
-void dpycl(DPY* dpy);
+void dpycl(void);
 
 // write render buffer to out
-void dpyrend(DPY* dpy);
+void dpyrend(void);
 
 // get draw target
-char* gtrline(DPY* dpy,size_t idex);
+char* gtrline(size_t idex);
 
-// get screen cursor
-int* gtcursor(DPY* dpy);
+// get/set/move cursor
+int* gtcursor(void);
+void stcursor(int x,int y);
+void cursormv(int x,int y);
 
 // get window dimentions
-int* gtwsz(DPY* dpy);
+int* gtwsz(void);
 
 // ---   *   ---   *   ---
 
