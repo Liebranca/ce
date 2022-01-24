@@ -1,6 +1,8 @@
 onTap
-  CE.cursor.y-=CE.cursor.y>0;
+  cursormv(0,-1);
+
 onHel
-  CE.cursor.y-=CE.cursor.y>0;
+  cursormv(0,-1);
+
 onRel
   None

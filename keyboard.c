@@ -28,13 +28,18 @@
 // ---   *   ---   *   ---
 // constants
   #define IBF_SZ 8
-  #define REPEAT_TRESH 4
+  #define REPEAT_DELAY 4
 
 // ---   *   ---   *   ---
 // macros
-  #define IS_TAP(x) ((kbd.keys[(x)]&0b001)>>0)
-  #define IS_HEL(x) ((kbd.keys[(x)]&0b010)>>1)
-  #define IS_REL(x) ((kbd.keys[(x)]&0b100)>>2)
+  #define IS_TAP(x) \
+    ((kbd.keys[(x*((x)<K_COUNT))]&0b001)>>0)
+
+  #define IS_HEL(x) \
+    ((kbd.keys[(x*((x)<K_COUNT))]&0b010)>>1)
+
+  #define IS_REL(x) \
+    ((kbd.keys[(x*((x)<K_COUNT))]&0b100)>>2)
 
 // ---   *   ---   *   ---
 // global state
@@ -51,10 +56,11 @@ typedef struct {
   int evcnt;
 
   // textual input
-  char ibuff;
+  char ibuff[IBF_SZ];
+  char ibuff_i;
 
   // used to restore tty
-  struct termios retore;
+  struct termios restore;
 
   // redundancy
   int fd;
@@ -64,8 +70,21 @@ typedef struct {
 // ---   *   ---   *   ---
 // getters
 
+// get events left in stack or delay cooldown
 int gtevcnt(void) {
   return (kbd.evcnt!=0) && (kbd.evlinger!=0);
+
+};
+
+// get key states
+char keytap(char key) {
+  return IS_TAP(key);
+
+};char keyhel(char key) {
+  return IS_HEL(key);
+
+};char keyrel(char key) {
+  return IS_REL(key);
 
 };
 
@@ -140,6 +159,25 @@ int iopen(void) {
 // clear all states/timers/events
 void kbdcl(void) {
   memset(kbd.keys,0,K_COUNT*sizeof(kbd.keys[0]));
+
+};
+
+// clear state for a single key
+void keycl(char key) {
+  kbd.keys[key*(key<K_COUNT)]^=kbd.keys[key];
+
+};
+
+// repeat delay cooldown
+void keycool(void) {
+  kbd.evlinger+=8;kbd.evlinger&=0xF;
+
+};
+
+// save input byte
+void keyibs(char key) {
+  kbd.ibuff[kbd.ibuff_i]=key;
+  ibuff_i++;ibuff_i&=(IBF_SZ-1);
 
 };
 
@@ -271,10 +309,10 @@ void keychk(void) {
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
-    kbd.keys[x]+=(1*(ind_repeat<REPEAT_TRESH));
+    kbd.keys[x]+=(1*(ind_repeat<REPEAT_DELAY));
 
     // get repeat triggers this frame
-    repeat=(repeat!=0) || (ind_repeat==REPEAT_TRESH);
+    repeat=(repeat!=0) || (ind_repeat==REPEAT_DELAY);
     K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat];
 
     // update event count, set bits

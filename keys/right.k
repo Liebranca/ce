@@ -1,11 +1,12 @@
 onTap
-  if(IS_HEL(K_LALT)) {
-    CE.kbd[K_ARGT]&=~0b111;
+  if(keyhel(K_LALT)) {
+    keycl(K_ARGT);
     swtty(1,CE.ctty);
 
-  };CE.cursor.x+=CE.cursor.x<(CE.wsz.ws_col-1);
+  };cursormv(1,0);
 
 onHel
-  CE.cursor.x+=CE.cursor.x<(CE.wsz.ws_col-1);
+  cursormv(1,0);
+
 onRel
   None

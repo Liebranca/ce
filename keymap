@@ -124,6 +124,7 @@ sub rdkfile {
 
 sub tifunc {
   my ($lc,$uc,$mr)=@_;
+
   for my $c($lc,$uc,$mr) {
     $c=sprintf "\\x%02X",ord($c);
 
@@ -131,13 +132,14 @@ sub tifunc {
 
   my $s=<<"EOF"
 
-  CE.evlinger+=8;CE.evlinger&=0xF;
+  keycool();
   char table[4]="$lc$uc$mr";
-  CE.ti=table[
-    (IS_HEL(K_LSHIFT))
-   +(IS_HEL(K_RALT)<<1)
 
-  ];
+  keyibs(table[
+    (keyhel(K_LSHIFT))
+   +(keyhel(K_RALT)<<1)
+
+  ]);
 
 EOF
 ; return $s;
@@ -236,28 +238,8 @@ sub rdti {
 
 # ---   *   ---   *   ---
 
-sub generator {
+sub generate_keymap {
   my $FH=shift;
-
-  my $macros=''.
-
-    "#ifndef NIHIL_FUNC\n".
-    "#define NIHIL_FUNC\n".
-    "typedef void(*nihil)(void);\n".
-    "#endif\n".
-
-    "#define IS_TAP(x) ((".KBD."[(x)]&0b001)>>0)\n".
-    "#define IS_HEL(x) ((".KBD."[(x)]&0b010)>>1)\n".
-    "#define IS_REL(x) ((".KBD."[(x)]&0b100)>>2)\n".
-
-    "\n";
-
-  my $utilfuncs=''.
-
-    'void kbdcl(void) {'."\n".
-    ' memset('.KBD.",\n".
-    ' 0,sizeof('.KBD.')/sizeof('.KBD.'[0]));'."\n".
-    "};\n";
 
   my @lists=();{
 
@@ -270,28 +252,6 @@ sub generator {
     push @lists,$item;
 
     $item=avt::clist([0,'enum:K_COUNT','','']);
-    push @lists,$item;
-
-# ---   *   ---   *   ---
-
-    # function pointer tables
-
-    $item=avt::clist(
-      [0,'arr:nihil','K_TAP_FUNCS','']
-
-    );$item->[2]='keyskip';$item=avt::clist($item);
-    push @lists,$item;
-
-    $item=avt::clist(
-      [0,'arr:nihil','K_HEL_FUNCS','']
-
-    );$item->[2]='keyskip';$item=avt::clist($item);
-    push @lists,$item;
-
-    $item=avt::clist(
-      [0,'arr:nihil','K_REL_FUNCS','']
-
-    );$item->[2]='keyskip';$item=avt::clist($item);
     push @lists,$item;
 
   };
@@ -341,86 +301,10 @@ sub generator {
 
 # ---   *   ---   *   ---
 
-  my $EVSTACK=<<'EOF'
-
-void evpop(char key) {
-  char idex=0;
-  for(char x=0;x<CE.evstack_i;x++) {
-    if(CE.evstack[x]==key) {
-      idex=x;
-      break;
-
-    };
-  };CE.evstack[idex]=0x00;
-
-  while(idex<CE.evstack_i) {
-    CE.evstack[idex]=CE.evstack[idex+1];
-    idex++;
-
-  };CE.evstack_i--;
-};
-
-void evpush(char key) {
-  char do_push=1;
-  for(char x=0;x<CE.evstack_i;x++) {
-    if(CE.evstack[x]==key) {
-      do_push=0;
-      break;
-
-    };
-  };if(do_push) {
-    CE.evstack[CE.evstack_i]=key;
-    CE.evstack_i++;
-
-  };
-};
-
-EOF
-;
-
-# ---   *   ---   *   ---
-
-  # keydown events
-  my $KEYSET="void keyset(char key,char rel) {\n";
-  $KEYSET.=
-    " char x=KEYLAY[key];\n".
-    " if(!x) {return;};x--;\n".
-
-    " if(!rel) {\n".
-
-    "  ".KBD."[x]&=~1;\n".
-    "  ".KBD."[x]|=(1*(!IS_HEL(x))|(x>=$NON_TI));\n".
-
-    "  K_TAP_FUNCS[(x+1)*IS_TAP(x)]();\n".
-    "  evpush(x);\n";
-
-# ---   *   ---   *   ---
-
-  # keyup events
-  $KEYSET.=" } else {\n".
-
-    "  ".KBD."[x]&=~(0xFF03);\n".
-    "  ".KBD."[x]|=4;\n".
-
-    "  K_REL_FUNCS[x+1]();\n".
-    "  evpop(x);\n".
-
-    " };\n\n};\n\n";
-
-# ---   *   ---   *   ---
-
-  # event functions
-  my $evfuncs=avt::cfunc(
-    ['void:void','keyskip',';','']
-
-  );
-
-# ---   *   ---   *   ---
-
   # iter through the map
-  my $i=0;while(@KEYMAP) {
-    my $name=shift @KEYMAP;
-    my $data=shift @KEYMAP;
+  for(my $i=0;$i<@KEYMAP;$i+=2) {
+    my $name=@KEYMAP[$i+0];
+    my $data=@KEYMAP[$i+1];
 
     # unpack array reference
     my (
@@ -434,67 +318,24 @@ EOF
 # ---   *   ---   *   ---
 
     # populate lists
-    { my $tap=($onDown)
-        ? "K_TAP_FUNC_$name"
-        : "keyskip";
-
-      my $hel=($onHeld)
-        ? "K_HEL_FUNC_$name"
-        : "keyskip";
-
-      my $rel=($onUp)
-        ? "K_REL_FUNC_$name"
-        : "keyskip";
-
-      my @items=($kcode,"K_$name",$tap,$hel,$rel);
+    { my @items=($kcode,"K_$name");
       for(my $j=0;$j<@lists;$j++) {
         $lists[$j]->[2]=$items[$j];
         $lists[$j]=avt::clist($lists[$j]);
 
       };
-
     };
-
-# ---   *   ---   *   ---
-
-    # make definitions
-    { my @helper=(
-        $onDown,'TAP',
-        $onHeld,'HEL',
-        $onUp  ,'REL',
-
-      );while(@helper) {
-        my $code=shift @helper;
-        my $suff=shift @helper;
-
-        if(!$code) {next;};
-
-        $evfuncs->[1]="K_$suff"."_FUNC_$name";
-        $evfuncs->[2]=$code;
-
-        $evfuncs=avt::cfunc($evfuncs);
-
-      };
-    };
-
-    $i++;
 
   };
 
 # ---   *   ---   *   ---
 
-  my $result=$CODE_TO_KEY.$macros.$utilfuncs;
+  my $result=''.
+    "#define NON_TI $NON_TI\n".
+    $CODE_TO_KEY;
 
   # close lists
-  for(my $j=0;$j<2;$j++) {
-    $lists[$j]->[0]++;
-    $lists[$j]=avt::clist($lists[$j]);
-
-    $result.=$lists[$j]->[3];
-
-  };$result.=( $evfuncs->[3] );
-
-  for(my $j=2;$j<@lists;$j++) {
+  for(my $j=0;$j<@lists;$j++) {
     $lists[$j]->[0]++;
     $lists[$j]=avt::clist($lists[$j]);
 
@@ -502,61 +343,8 @@ EOF
 
   };
 
-# ---   *   ---   *   ---
-
-  # ^add caller def
-  $result.= $EVSTACK.$KEYSET.
-
-    "void keychk(void) {\n".
-    " ".EVSTK.'['.EVCNT."]=0x00;\n".
-    " ".BUSY."^=".BUSY.";\n".
-
-    ' char* ev='.EVSTK."+0;\n".
-    " int repeat=0;\n".
-
-    " while(*ev) {\n".
-    "  char x=*ev;\n".
-
-    "  int ind_repeat=(".KBD."[x]&0xFF00)>>8;".
-    "  ".KBD."[x]+=(1*(ind_repeat<4))<<8;".
-
-    "  repeat=(repeat!=0) || (ind_repeat==4);\n".
-
-    "  K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat]();\n".
-
-    "  ".BUSY."+=(".KBD."[x]&0b111)!=0;\n".
-
-    "  ".KBD."[x]|=2*IS_TAP(x);\n".
-    "  ".KBD."[x]&=~1;\n".
-    "  ".KBD."[x]&=~4;\n".
-
-    "  ev++;\n".
-
-    " };\n".
-    "};\n\n"
-
-  ;
-
-# ---   *   ---   *   ---
-
-  # this bit is just to see the key names
-  my $DEBUG_NAMES="static const char* KEY_NAMES[]={\n";
-  my @lay=@{ $CACHE{-LAYOUT_I} };
-
-  # make an array of human-readable ids
-  # useful for debug prints
-  while(@lay) {
-    my $name=shift @lay;
-    $DEBUG_NAMES.=(avt::dqwrap $name ).",\n";
-
-  };$DEBUG_NAMES=substr(
-      $DEBUG_NAMES,0,
-      length $DEBUG_NAMES
-
-  );$DEBUG_NAMES.="\n};\n\n";
-
   # write it all to file
-  print $FH $result.$DEBUG_NAMES;
+  print $FH $result;
 
 };
 
@@ -565,11 +353,87 @@ EOF
 avt::wrcboil_h(
   '/ce/',
   'keymap',
-  \&generator,
+  \&keymap_generator,
   'IBN-3DILA'
 
 );
 
+
+# ---   *   ---   *   ---
+
+# auxiliary file
+sub generate_keycalls {
+
+  my $result='';
+  my $evtable='';
+
+  my $evfuncs=['void:void','','',''];
+
+  # iter through the map
+  for(my $i=0;$i<@KEYMAP;$i+=2) {
+    my $name=@KEYMAP[$i+0];
+    my $data=@KEYMAP[$i+1];
+
+    # unpack array reference
+    my (
+      $kcode,
+      $onDown,
+      $onUp,
+      $onHeld,
+
+    )=@{ $data };
+
+# ---   *   ---   *   ---
+
+    # go through the code
+    { my @helper=(
+        $onDown,'TAP',
+        $onHeld,'HEL',
+        $onUp  ,'REL',
+
+      );my $j=0;while(@helper) {
+        my $code=shift @helper;
+        my $suff=shift @helper;
+
+        # populate callback arrays
+        my $funcname=(!$code)
+          ? "keyskip"
+          : $"K_$suff"."_FUNC_$name"
+          ;
+
+        $evtable.="keycall(K_$name,$j,$funcname);\n";
+
+# ---   *   ---   *   ---
+
+        # skip empty or make definition
+        if(!$code) {next;};
+
+        $evfuncs->[1]="K_$suff"."_FUNC_$name";
+        $evfuncs->[2]=$code;
+
+        $evfuncs=avt::cfunc($evfuncs);
+
+
+      };
+    };
+  };
+
+# ---   *   ---   *   ---
+
+  $result.=( $evfuncs->[3] ).$evtable;
+  print $FH $result;
+
+};
+
+# ---   *   ---   *   ---
+
+avt::wrcboil_h(
+  '/ce/',
+  'keycalls',
+  \&keycalls_generator,
+  'IBN-3DILA'
+
+);
 
 # ---   *   ---   *   ---
 1; # ret
