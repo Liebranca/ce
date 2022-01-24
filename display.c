@@ -88,7 +88,7 @@ void stcursor(int x,int y) {
   dpy.cursor.x+=x;dpy.cursor.y+=y;
 
   // cap x
-  if(dpy.cursor.x>(dpy.wsz.x-1)) {
+  if(dpy.cursor.x>=(dpy.wsz.x-1)) {
     dpy.cursor.x=(dpy.wsz.x-1);
 
   } else if(dpy.cursor.x<0) {
@@ -97,7 +97,7 @@ void stcursor(int x,int y) {
   };
 
   // cap y
-  if(dpy.cursor.y>(dpy.wsz.y-1)) {
+  if(dpy.cursor.y>=(dpy.wsz.y-1)) {
     dpy.cursor.y=(dpy.wsz.y-1);
 
   } else if(dpy.cursor.y<0) {

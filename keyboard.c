@@ -32,7 +32,7 @@
 
 // ---   *   ---   *   ---
 // constants
-  #define IBF_SZ 0x40
+  #define IBF_SZ 0x08
   #define REPEAT_DELAY 4
 
 // ---   *   ---   *   ---
@@ -77,7 +77,7 @@ typedef struct {
 
 // get events left in stack or delay cooldown
 int gtevcnt(void) {
-  return (kbd.evcnt!=0) && (kbd.evlinger!=0);
+  return (kbd.evcnt!=0) && (kbd.evlinger==0);
 
 };
 
@@ -211,7 +211,7 @@ void evpush(char key) {
 
   // try to find key
   char do_push=1;for(char x=0;x<kbd.evstack_i;x++) {
-    if(key==kbd.evstack[x]) {do_push=1;break;};
+    if(key==kbd.evstack[x]) {do_push=0;break;};
 
   // push if not found
   };if(do_push) {
@@ -309,11 +309,11 @@ void keychk(void) {
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
-    kbd.keys[x]+=(1*(ind_repeat<REPEAT_DELAY));
+    kbd.keys[x]+=(1*(ind_repeat<REPEAT_DELAY))<<8;
 
     // get repeat triggers this frame
-    repeat=(repeat!=0) || (ind_repeat==REPEAT_DELAY);
-    K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat];
+    repeat=(repeat!=0)|(ind_repeat==REPEAT_DELAY);
+    K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat]();
 
     // update event count, set bits
     kbd.evcnt+=(kbd.keys[x]&0b111)!=0;
@@ -361,9 +361,9 @@ int keynt(int fd) {
 void keyrd(void) {
 
   char ibuff[IBF_SZ];
-  memset(ibuff,0,IBF_SZ);
-
   uint64_t* input=(uint64_t*) (ibuff+0);
+
+  *input^=*input;
 
   kbd.evlinger-=kbd.evlinger>0;
   read(kbd.fd,ibuff,IBF_SZ);
@@ -372,7 +372,6 @@ void keyrd(void) {
   while(*input) {
 
     char key_id=(*input)&0x7F;
-
 
     char key_rel=((*input)&0xFF)==(key_id+0x80);
     keyset(key_id,key_rel);
