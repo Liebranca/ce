@@ -14,6 +14,7 @@
 
   #include "clock.h"
 
+  #include <string.h>
   #include <stdlib.h>
   #include <stdio.h>
 
@@ -22,7 +23,7 @@
 
 // ---   *   ---   *   ---
 
-struct CLK {
+typedef struct {
 
   // frame measuring
   uint64_t fbeg;
@@ -35,7 +36,7 @@ struct CLK {
   uint32_t vix;
   uint32_t vsz;
 
-};static CLK c={0};
+} CLK;static CLK c={0};
 
 // ---   *   ---   *   ---
 
@@ -45,12 +46,8 @@ void clknt(
   const wchar_t* v,
   uint32_t vsz
 
-) {
-
-  memset(&c,0,sizeof(CLK));
-  c=(CLK) {0,clock(),flen,0,v,0,vsz};
-
-  return c;
+) { memset(&c,0,sizeof(CLK));
+    c=(CLK) {0,clock(),flen,0,v,0,vsz};
 
 };
 

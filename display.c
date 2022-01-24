@@ -12,13 +12,16 @@
 
 // deps
 
-  #include <stddef.h>
+  #include "display.h"
+
   #include <stdlib.h>
   #include <string.h>
   #include <stdio.h>
 
   #include <unistd.h>
   #include <locale.h>
+
+  #include <sys/ioctl.h>
 
 // ---   *   ---   *   ---
 // constants
@@ -30,7 +33,7 @@
 // ---   *   ---   *   ---
 // global state
 
-typedef struct DPY {
+typedef struct {
 
   // screen cursor
   union {
@@ -59,12 +62,12 @@ typedef struct DPY {
 
   int fd;
 
-};static DPY dpy={0};
+} DPY;static DPY dpy={0};
 
 // ---   *   ---   *   ---
 // getters
 
-char** gtrline(size_t idex) {
+char* gtrline(size_t idex) {
   return dpy.rlines[idex&(RLINE_SZY-1)];
 
 };
@@ -143,7 +146,7 @@ void dpyrend(void) {
 
       y+1,dpy.rlines[y]
 
-    );badd(dpy,m);
+    );badd(m);
     memset(dpy.rlines[y],0,128);
 
   };
@@ -156,14 +159,14 @@ void dpyrend(void) {
     dpy.cursor.y+1,
     dpy.cursor.x+1
 
-  );badd(dpy,m);
+  );badd(m);
 
   write(
     dpy.fd,
     dpy.rbuff,
     dpy.rbuff_i
 
-  );bcl(dpy);badd(dpy,"\e[?25l");
+  );bcl();badd("\e[?25l");
 };
 
 // ---   *   ---   *   ---
@@ -181,7 +184,7 @@ void dpynt(int fd) {
   dpy.wsz.x=w.ws_col;dpy.wsz.y=w.ws_row;
 
   // clear screen and reposition
-  badd(dpy,"\e[2J\e[H\e[?25l");
+  badd("\e[2J\e[H\e[?25l");
   dpy.cursor.x=0;dpy.cursor.y=0;
 
   // ensure we can use lycon chars

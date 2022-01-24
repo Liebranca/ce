@@ -16,6 +16,7 @@
   #include <stdlib.h>
   #include <string.h>
   #include <stdio.h>
+  #include <unistd.h>
 
   #include "arstd.h"
 
@@ -89,6 +90,9 @@ void dumpf(void) {
 
 // ---   *   ---   *   ---
 
+// load these in last
+  #include "keycalls.h"
+
 void main(int argc,char** argv) {
 
   do {
@@ -103,7 +107,11 @@ void main(int argc,char** argv) {
   dpynt(STDOUT_FILENO);
 
   // open input handler  
-  keynt(STDIN_FILENO);
+  if(keynt(STDIN_FILENO)) {
+    fprintf(stderr,"Aborted\n");
+    exit(-1);
+
+  };
 
   // init the program clock
   clknt(
@@ -116,6 +124,9 @@ void main(int argc,char** argv) {
 
   );
 
+  // populate input callback arrays
+  K_FUNCS_LOAD();
+
 // ---   *   ---   *   ---
 
   int* sc_dim=gtwsz();
@@ -124,7 +135,7 @@ void main(int argc,char** argv) {
   int PANIC_TIMER=60;do {
 
     // render last frame
-    brend(CE.dpy);
+    dpyrend();
 
     // update the draw clock and tick
     sprintf(gtrline(sc_dim[1]-1),
@@ -141,9 +152,8 @@ void main(int argc,char** argv) {
   } while(PANIC_TIMER--);
 
   dpycl();
-  return;
+  exit(0);
 
 };
 
 // ---   *   ---   *   ---
-

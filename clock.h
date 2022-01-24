@@ -15,7 +15,7 @@ extern "C" {
 // methods
 
 // nit a new program clock
-void clkmk(
+void clknt(
   uint64_t flen,
   const wchar_t* v,
   uint32_t vsz
@@ -23,7 +23,7 @@ void clkmk(
 );
 
 // run the clock for this frame
-void tick(size_t busy,char* linger);
+void tick(int busy);
 
 // get draw-clock char
 wchar_t clkdr(void);

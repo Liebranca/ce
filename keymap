@@ -238,7 +238,7 @@ sub rdti {
 
 # ---   *   ---   *   ---
 
-sub generate_keymap {
+sub keymap_generator {
   my $FH=shift;
 
   my @lists=();{
@@ -303,8 +303,8 @@ sub generate_keymap {
 
   # iter through the map
   for(my $i=0;$i<@KEYMAP;$i+=2) {
-    my $name=@KEYMAP[$i+0];
-    my $data=@KEYMAP[$i+1];
+    my $name=$KEYMAP[$i+0];
+    my $data=$KEYMAP[$i+1];
 
     # unpack array reference
     my (
@@ -362,17 +362,19 @@ avt::wrcboil_h(
 # ---   *   ---   *   ---
 
 # auxiliary file
-sub generate_keycalls {
+sub keycalls_generator {
+
+  my $FH=shift;
 
   my $result='';
-  my $evtable='';
+  my $evtable="void K_FUNCS_LOAD(void) {\n";
 
   my $evfuncs=['void:void','','',''];
 
   # iter through the map
   for(my $i=0;$i<@KEYMAP;$i+=2) {
-    my $name=@KEYMAP[$i+0];
-    my $data=@KEYMAP[$i+1];
+    my $name=$KEYMAP[$i+0];
+    my $data=$KEYMAP[$i+1];
 
     # unpack array reference
     my (
@@ -398,10 +400,11 @@ sub generate_keycalls {
         # populate callback arrays
         my $funcname=(!$code)
           ? "keyskip"
-          : $"K_$suff"."_FUNC_$name"
+          : "\&K_$suff"."_FUNC_$name"
           ;
 
         $evtable.="keycall(K_$name,$j,$funcname);\n";
+        $j++;
 
 # ---   *   ---   *   ---
 
@@ -420,7 +423,7 @@ sub generate_keycalls {
 
 # ---   *   ---   *   ---
 
-  $result.=( $evfuncs->[3] ).$evtable;
+  $result.=( $evfuncs->[3] ).$evtable."\n};\n";
   print $FH $result;
 
 };

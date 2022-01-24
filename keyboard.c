@@ -12,13 +12,18 @@
 
 // deps
 
+  #include "keyboard.h"
+
   #include <stddef.h>
+  #include <inttypes.h>
   #include <string.h>
   #include <stdlib.h>
   #include <stdio.h>
+  #include <unistd.h>
 
   #include <termios.h>
 
+  #include <fcntl.h>
   #include <linux/kd.h>
   #include <sys/ioctl.h>
   #include <sys/types.h>
@@ -27,19 +32,19 @@
 
 // ---   *   ---   *   ---
 // constants
-  #define IBF_SZ 8
+  #define IBF_SZ 0x40
   #define REPEAT_DELAY 4
 
 // ---   *   ---   *   ---
 // macros
   #define IS_TAP(x) \
-    ((kbd.keys[(x*((x)<K_COUNT))]&0b001)>>0)
+    ((kbd.keys[(x)*((x)<K_COUNT)]&0b001)>>0)
 
   #define IS_HEL(x) \
-    ((kbd.keys[(x*((x)<K_COUNT))]&0b010)>>1)
+    ((kbd.keys[(x)*((x)<K_COUNT)]&0b010)>>1)
 
   #define IS_REL(x) \
-    ((kbd.keys[(x*((x)<K_COUNT))]&0b100)>>2)
+    ((kbd.keys[(x)*((x)<K_COUNT)]&0b100)>>2)
 
 // ---   *   ---   *   ---
 // global state
@@ -149,8 +154,8 @@ int iopen(void) {
 
 // ^the undo for it
 };void iclose(void) {
-  ioctl(G_KBD->fd,KDSKBMODE,K_XLATE);
-  tcsetattr(G_KBD->fd,TCSAFLUSH,&(G_KBD->restore));
+  ioctl(kbd.fd,KDSKBMODE,K_XLATE);
+  tcsetattr(kbd.fd,TCSAFLUSH,&(kbd.restore));
 
 };
 
@@ -177,7 +182,7 @@ void keycool(void) {
 // save input byte
 void keyibs(char key) {
   kbd.ibuff[kbd.ibuff_i]=key;
-  ibuff_i++;ibuff_i&=(IBF_SZ-1);
+  kbd.ibuff_i++;kbd.ibuff_i&=(IBF_SZ-1);
 
 };
 
@@ -217,11 +222,6 @@ void evpush(char key) {
 };
 
 // ---   *   ---   *   ---
-// generated imports
-  #include "keymap.h"
-  #include "chartab.h"
-
-// ---   *   ---   *   ---
 // callback tables
 
   // dummy/nop
@@ -234,9 +234,9 @@ void evpush(char key) {
 
   // just a convenience
   static nihil* K_FUNCS[3]={
-    K_TAP_FUNCS,
-    K_HEL_FUNCS,
-    K_REL_FUNCS
+    K_TAP_FUNCS+0,
+    K_HEL_FUNCS+0,
+    K_REL_FUNCS+0
 
   };
 
@@ -247,9 +247,9 @@ void keycall(
   char key,
   int mode,
 
-  nihil func,
+  nihil func
 
-) {K_FUNCS[mode&3][key]=func;};
+) {K_FUNCS[mode&3][key+1]=func;};
 
 // ---   *   ---   *   ---
 // on-press flipper
@@ -260,14 +260,14 @@ void keyset(char key,char rel) {
   char x=KEYLAY[key];
 
   // 0 is unused key or keyboard error
-  if(!x) {return;};x--;
+  if(!x || x>K_COUNT) {return;};x--;
 
   // tap/hel
   if(!rel) {
 
     // determine IS_TAP
     kbd.keys[x]&=~1;
-    kbd.keys[x]|=(1*(!IS_HEL(x))|(x>=NON_TI);
+    kbd.keys[x]|=(1*(!IS_HEL(x))|(x>=NON_TI));
 
     // ^make corresponding call if so
     K_TAP_FUNCS[(x+1)*IS_TAP(x)]();
@@ -301,11 +301,11 @@ void keychk(void) {
   kbd.keys[kbd.evstack_i]=0x00;
   kbd.evcnt^=kbd.evcnt;
 
-  char* ev=kbd.evstack+0;
+  int* ev=kbd.evstack+0;
   int repeat=0;
 
   // iter events
-  while(*ev) {char x=*ev;
+  while(*ev) {int x=*ev;
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
@@ -337,8 +337,11 @@ int keynt(int fd) {
 
   // go into raw mode
   if(iopen()) {
-    fprintf("Input handler failed it's own nit\n")
-    return -1;
+    fprintf(
+      stderr,
+      "Input handler failed it's own nit\n"
+
+    );return -1;
 
   };
 
@@ -346,7 +349,7 @@ int keynt(int fd) {
   read(kbd.fd,ibuff,IBF_SZ);
   { int d=8;while(d--) {
       read(kbd.fd,ibuff,IBF_SZ);
-      usleep(0x4000);
+      usleep(0x6000);
 
     };
   };
@@ -358,7 +361,9 @@ int keynt(int fd) {
 void keyrd(void) {
 
   char ibuff[IBF_SZ];
-  uint64_t* input=(uint64_t*) ibuff;
+  memset(ibuff,0,IBF_SZ);
+
+  uint64_t* input=(uint64_t*) (ibuff+0);
 
   kbd.evlinger-=kbd.evlinger>0;
   read(kbd.fd,ibuff,IBF_SZ);
@@ -368,12 +373,10 @@ void keyrd(void) {
 
     char key_id=(*input)&0x7F;
 
-    key_id*=
-      key_id<(K_COUNT);
 
-    char key_rel=((*input)&0xFF)==key_id+0x80;
-
+    char key_rel=((*input)&0xFF)==(key_id+0x80);
     keyset(key_id,key_rel);
+
     *input=(*input)>>8;
 
   };keychk();

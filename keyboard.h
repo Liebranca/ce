@@ -14,6 +14,10 @@ typedef void(*nihil)(void);
 #endif
 
 // ---   *   ---   *   ---
+// for testing only
+# include "keymap.h"
+
+// ---   *   ---   *   ---
 // methods
 
 // start the input handler
