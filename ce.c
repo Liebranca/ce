@@ -49,28 +49,40 @@
   };
 
 // ---   *   ---   *   ---
-/*
-  // text input
-  if(CE.ti) {
 
-    CE.file.lines[CE.cursor.y][CE.cursor.x]=CE.ti;
+// text input
+void pti(void) {
 
-    strcpy(
-      CE.render.lines[CE.cursor.y],
-      CE.file.lines[CE.cursor.y]
+  int* cursor=gtcursor();
+  char* ibuff=keyibl();
 
-    );
+  if(*ibuff) {
 
-    CE.ti=0x00;
+    int x=cursor[0];
+    int y=cursor[1];
 
-    CE.cursor.x++;
-    if(CE.cursor.x>=(CE.wsz.ws_col-1)) {
-      CE.cursor.x=0;
-      CE.cursor.y+=CE.cursor.y<(CE.wsz.ws_row-1);
+    char* l=CE.file.lines[y];
+    int len=strlen(l);
+
+    if(len<x) {
+      for(int i=len;i<x;i++) {
+        if(!l[i]) {l[i]=' ';};
+
+      };
+    };l[x]=*ibuff;
+
+    strcpy(gtrline(y),l);
+    if(*ibuff=='\n') {
+      cursormv(9999,0);
+
+    } else {
+      cursormv(1,0);
 
     };
-  };
-*/
+
+  };*ibuff^=*ibuff;
+};
+
 // ---   *   ---   *   ---
 // file handling
 
@@ -132,7 +144,7 @@ void main(int argc,char** argv) {
   int* sc_dim=gtwsz();
 
   // looparino
-  int PANIC_TIMER=60;do {
+  int PANIC_TIMER=1600;do {
 
     // render last frame
     dpyrend();
@@ -144,7 +156,7 @@ void main(int argc,char** argv) {
     );tick(gtevcnt());
 
     // run event loop
-    keyrd();
+    keyrd();pti();
 
 // ---   *   ---   *   ---
 // cleanup

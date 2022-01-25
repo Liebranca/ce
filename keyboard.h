@@ -46,6 +46,9 @@ void keyrd(void);
 // save input char
 void keyibs(char key);
 
+// get input chars
+char* keyibl(void);
+
 // get events left in queue
 int gtevcnt(void);
 

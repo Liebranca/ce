@@ -77,7 +77,7 @@ typedef struct {
 
 // get events left in stack or delay cooldown
 int gtevcnt(void) {
-  return (kbd.evcnt!=0) && (kbd.evlinger==0);
+  return (kbd.evcnt!=0) || (kbd.evlinger>0);
 
 };
 
@@ -179,10 +179,25 @@ void keycool(void) {
 
 };
 
+// ---   *   ---   *   ---
+
 // save input byte
 void keyibs(char key) {
   kbd.ibuff[kbd.ibuff_i]=key;
   kbd.ibuff_i++;kbd.ibuff_i&=(IBF_SZ-1);
+
+};
+
+// get input bytes
+char* keyibl(void) {
+
+  static char ibuff[IBF_SZ+1];
+
+  strncpy(ibuff,kbd.ibuff,kbd.ibuff_i);
+  memset(kbd.ibuff,0,kbd.ibuff_i);
+
+  kbd.ibuff_i=0;
+  return ibuff;
 
 };
 

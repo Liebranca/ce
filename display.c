@@ -88,11 +88,12 @@ void stcursor(int x,int y) {
   dpy.cursor.x+=x;dpy.cursor.y+=y;
 
   // cap x
-  if(dpy.cursor.x>=(dpy.wsz.x-1)) {
-    dpy.cursor.x=(dpy.wsz.x-1);
+  if(dpy.cursor.x>(dpy.wsz.x-1)) {
+    dpy.cursor.x=0;dpy.cursor.y++;
 
   } else if(dpy.cursor.x<0) {
-    dpy.cursor.x=0;
+    dpy.cursor.x=(dpy.wsz.x-1);
+    dpy.cursor.y--;
 
   };
 

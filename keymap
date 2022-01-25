@@ -187,7 +187,11 @@ sub rdti {
   my @KEYMAP=(
 
     # quick exit for testing
-    'ESC' ,[KI('escape'),'','dumpf();exit(0);','',],
+    'ESC' ,[
+      KI('escape'),
+      '','dpycl();dumpf();exit(0);','',
+
+    ],
 
     # modifiers
     'LALT',[KI('LAlt'),'','',''],
@@ -231,7 +235,11 @@ sub rdti {
 #    # del, ret
 #    'EDEL',[KI("del"),undef,''],
 #
-#    'ERET',[KI("ret"),undef,''],
+    'ERET',[
+      KI("ret"),
+      rdkfile('./ce/keys/ret.k')
+
+    ],
 
   );my $NON_TI=int((@KEYMAP)/2);
   push @KEYMAP,rdti;
