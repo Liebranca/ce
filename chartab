@@ -45,8 +45,9 @@ my $root=avt::root $ENV{'ARPATH'};chdir $root;
 avt::wrcboil_h(
   '/ce/',
   'chartab',
-  \&generator,
-  'IBN-3DILA'
+  'IBN-3DILA',
+
+  \&generator,[]
 
 );
 

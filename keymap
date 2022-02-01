@@ -361,8 +361,9 @@ sub keymap_generator {
 avt::wrcboil_h(
   '/ce/',
   'keymap',
-  \&keymap_generator,
-  'IBN-3DILA'
+  'IBN-3DILA',
+
+  \&keymap_generator,[]
 
 );
 
@@ -441,8 +442,9 @@ sub keycalls_generator {
 avt::wrcboil_h(
   '/ce/',
   'keycalls',
-  \&keycalls_generator,
-  'IBN-3DILA'
+  'IBN-3DILA',
+
+  \&keycalls_generator,[]
 
 );
 

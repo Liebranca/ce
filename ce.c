@@ -71,16 +71,13 @@ void pti(void) {
       };
     };l[x]=*ibuff;
 
+    int mx=1+(9998*(*ibuff=='\n'));
+
     strcpy(gtrline(y),l);
-    if(*ibuff=='\n') {
-      cursormv(9999,0);
-
-    } else {
-      cursormv(1,0);
-
-    };
+    cursormv(mx,0);
 
   };*ibuff^=*ibuff;
+
 };
 
 // ---   *   ---   *   ---
