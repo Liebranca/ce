@@ -6,16 +6,10 @@ extern "C" {
 #endif
 
 // ---   *   ---   *   ---
-// types
+// deps
 
-#ifndef NIHIL_FUNC
-#define NIHIL_FUNC
-typedef void(*nihil)(void);
-#endif
-
-// ---   *   ---   *   ---
-// for testing only
-# include "keymap.h"
+  #include "ardef.h"
+  #include "keymap.h"
 
 // ---   *   ---   *   ---
 // methods

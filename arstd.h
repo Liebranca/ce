@@ -7,6 +7,11 @@ extern "C" {
 
 // ---   *   ---   *   ---
 
+// frees and nulls a ptr
+void sfree(void** ptr);
+
+// ---   *   ---   *   ---
+
 #define PASS_ARGV(x) sizeof(x)/sizeof(x[0]),x
 
 // fork, call process and capture output

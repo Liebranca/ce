@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include <fcntl.h>
 #include <limits.h>
@@ -26,6 +27,18 @@
 #include <sys/wait.h>
 
 // ---   *   ---   *   ---
+// mem stuff
+
+void sfree(void** ptr) {
+
+  if(*ptr!=NULL) {
+    free(*ptr);*ptr=NULL;
+
+  };
+};
+
+// ---   *   ---   *   ---
+// path stuff
 
 static char** PATH;
 static const size_t PATH_SZ=16;
