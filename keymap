@@ -71,13 +71,20 @@ sub parse_kbdlay {
     if(!$line || (index $line,'#')==0) {
       next;
 
-    };$line.=($line eq 'NON')
-      ? "$i"
-      : ''
-      ;
+    };
 
-    $kbdlay{$line}=$i;$i++;
-    push @layi,$line;
+    if($line eq 'NON') {
+      $line.="$i";
+      $line.=" $line";
+
+    };my ($linux_name,$x11_name)=split ' ',$line;
+    if(!$linux_name) {
+      $linux_name="$i";
+
+    };
+
+    $kbdlay{$linux_name}=$i;$i++;
+    push @layi,$linux_name;
 
   };$CACHE{-LAYOUT_I}=\@layi;
   return \%kbdlay;
@@ -292,6 +299,12 @@ sub keymap_generator {
 
       # cant think of a smart way to do it
       for(my $j=0;$j<@used_keys;$j++) {
+
+      if(not defined $kcode) {
+        print STDERR "---------$kname\n";last;
+
+      };
+
         if($used_keys[$j]==$kcode) {
           $list->[2]=$j+1;last;
 

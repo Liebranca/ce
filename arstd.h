@@ -20,6 +20,9 @@ char* ex(int argc,char** argv);
 // basic chvt wrapper
 void swtty(int dir,char* ctty);
 
+// find X win id associated with (p)pid
+int findwin(void);
+
 // ---   *   ---   *   ---
 
 #ifdef ___cplusplus

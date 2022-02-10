@@ -15,7 +15,7 @@ typedef void(*nihil)(void);
 
 #ifndef NOPE_FUNC
 #define NOPE_FUNC
-void nope(void) {;};
+static void nope(void) {;};
 #endif
 
 // ---   *   ---   *   ---

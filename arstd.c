@@ -80,7 +80,19 @@ void getpath(void) {
 // ---   *   ---   *   ---
 
   // get $PATH
-  { char* envpath=getenv("PATH");
+  {
+
+    char* envpath;
+
+    // copy environment variable
+    { char* ref_envpath=getenv("PATH");
+      envpath=malloc(
+        sizeof(char)*strlen(ref_envpath)
+
+      );strcpy(envpath,ref_envpath);
+
+    };
+
     char* token=strtok(envpath,":");
 
     int x=2;
@@ -97,7 +109,7 @@ void getpath(void) {
       // go to next
       token=strtok(NULL,":");x++;
 
-    };
+    };free(envpath);
   };
 
 // ---   *   ---   *   ---
@@ -219,6 +231,43 @@ void swtty(int dir,char* ctty) {
     ex(PASS_ARGV(ex_argv));
 
   };
+
+};
+
+// ---   *   ---   *   ---
+
+int findwin(void) {
+
+  char wid[64];
+  int pid=getpid();
+
+  while(pid>1) {
+    sprintf(wid,"%u",pid);
+    char* ex_argv[]={"bin/wpid",wid+0};
+
+    strcpy(wid, ex(PASS_ARGV(ex_argv)) );
+
+    if(!wid[0]) {
+
+      FILE* fp;{
+        char tmp[PATH_MAX+1];
+
+        sprintf(tmp,"/proc/%d/stat", pid);
+        fp=fopen(tmp,"r");
+
+      };
+
+      fscanf(fp,"%*d %*s %*s %d",&pid);
+      fclose(fp);
+
+      continue;
+
+    };break;
+
+  };
+
+  char* eptr;
+  return (int) strtoul(wid,&eptr,10);
 
 };
 

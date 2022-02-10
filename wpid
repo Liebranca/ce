@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# WPID
+# parses wmctrl -lp
+#
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+#
+# CONTRIBUTORS
+# lyeb,
+# ---   *   ---   *   ---
+# deps
+
+  use strict;
+  use warnings;
+
+# ---   *   ---   *   ---
+
+if(!$ARGV[0]) {
+  print "\0";
+  exit;
+
+};my $wpid=shift;
+
+my @wins=split "\n",`wmctrl -lp`;
+
+for my $w(@wins) {
+  my @item=split ' ',$w;
+
+  my ($wid,$pid)=($item[0],$item[2]);
+  if($pid eq $wpid) {
+    $wid=hex $wid;
+    print "$wid";exit;
+
+  };
+
+};print "\0";
+
+
+# ---   *   ---   *   ---
+1; # ret
