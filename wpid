@@ -25,17 +25,25 @@ if(!$ARGV[0]) {
 
 my @wins=split "\n",`wmctrl -lp`;
 
-for my $w(@wins) {
-  my @item=split ' ',$w;
+while($wpid>1) {
+  for my $w(@wins) {
+    my @item=split ' ',$w;
 
-  my ($wid,$pid)=($item[0],$item[2]);
-  if($pid eq $wpid) {
-    $wid=hex $wid;
-    print "$wid";exit;
+    my ($wid,$pid)=($item[0],$item[2]);
+    if($pid eq $wpid) {
+      $wid=hex $wid;
+      print "$wid\0";exit;
+
+    };
 
   };
 
-};print "\0";
+  my $s=`cat /proc/$wpid/stat`;
+  $wpid=(split ' ',$s)[3];
+
+};
+
+print "\0";
 
 
 # ---   *   ---   *   ---

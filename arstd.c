@@ -68,12 +68,10 @@ void getpath(void) {
   { char* arpath=getenv("ARPATH");
     int len=strlen(arpath);
 
-    // copy
+    // copy and cat /bin/
     PATH[1]=malloc((len+2)*sizeof(char));
     strcpy(PATH[1],arpath);
-
-    // ensure last char is /
-    PATH[1][len]='/';PATH[1][len+1]=0x00;
+    strcpy(PATH[1]+len,"/bin/");
 
   };
 
@@ -241,30 +239,10 @@ int findwin(void) {
   char wid[64];
   int pid=getpid();
 
-  while(pid>1) {
-    sprintf(wid,"%u",pid);
-    char* ex_argv[]={"bin/wpid",wid+0};
+  sprintf(wid,"%u",pid);
+  char* ex_argv[]={"wpid",wid+0};
 
-    strcpy(wid, ex(PASS_ARGV(ex_argv)) );
-
-    if(!wid[0]) {
-
-      FILE* fp;{
-        char tmp[PATH_MAX+1];
-
-        sprintf(tmp,"/proc/%d/stat", pid);
-        fp=fopen(tmp,"r");
-
-      };
-
-      fscanf(fp,"%*d %*s %*s %d",&pid);
-      fclose(fp);
-
-      continue;
-
-    };break;
-
-  };
+  strcpy(wid, ex(PASS_ARGV(ex_argv)) );
 
   char* eptr;
   return (int) strtoul(wid,&eptr,10);
