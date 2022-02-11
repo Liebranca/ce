@@ -193,7 +193,7 @@ sub rdti {
     # quick exit for testing
     'ESC' ,[
       KI('escape'),
-      '','dpycl();dumpf();exit(0);','',
+      '','dpycl();exit(0);','',
 
     ],
 
