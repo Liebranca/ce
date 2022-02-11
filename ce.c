@@ -141,7 +141,7 @@ void main(int argc,char** argv) {
   int* sc_dim=gtwsz();
 
   // looparino
-  int PANIC_TIMER=60;do {
+  int PANIC_TIMER=1600;do {
 
     // render last frame
     dpyrend();

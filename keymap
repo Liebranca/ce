@@ -77,14 +77,11 @@ sub parse_kbdlay {
       $line.="$i";
       $line.=" $line";
 
-    };my ($linux_name,$x11_name)=split ' ',$line;
-    if(!$linux_name) {
-      $linux_name="$i";
+    };my ($ar_name,$X11_name)=split ' ',$line;
+    if(!$ar_name) {$ar_name="$i";};
 
-    };
-
-    $kbdlay{$linux_name}=$i;$i++;
-    push @layi,$linux_name;
+    $kbdlay{$ar_name}=$i;$i++;
+    push @layi,$ar_name;
 
   };$CACHE{-LAYOUT_I}=\@layi;
   return \%kbdlay;

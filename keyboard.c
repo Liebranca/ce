@@ -19,6 +19,8 @@
   #include <string.h>
   #include <stdlib.h>
   #include <stdio.h>
+  #include <stdbool.h>
+
   #include <unistd.h>
 
   #include <termios.h>
@@ -30,8 +32,19 @@
   #include <sys/stat.h>
 
   #include <limits.h>
-
   #include <signal.h>
+
+  #include <X11/Xlib.h>
+
+  // no idea where this is declared
+  bool XkbSetDetectableAutoRepeat(
+    Display* display,
+    bool detectable,
+    bool* supported_rtrn
+
+  );
+
+  #include "arstd.h"
 
 // ---   *   ---   *   ---
 // constants
@@ -48,6 +61,8 @@
 
   #define IS_REL(x) \
     ((kbd.keys[(x)*((x)<K_COUNT)]&0b100)>>2)
+
+typedef void(*rd_func)(char* ibuff);
 
 // ---   *   ---   *   ---
 // global state
@@ -72,6 +87,13 @@ typedef struct {
 
   // redundancy
   int fd;
+  char* envdpy;
+
+  // X stuff
+  Display* xdpy;
+  Window xwin;
+
+  rd_func f_krd;
 
 } KBD;static KBD kbd={0};
 
@@ -112,6 +134,7 @@ void onsegv(int sig) {
 // ---   *   ---   *   ---
 // fwd decls
   void iclose(void);
+  void xkeydl(void);
 
 // ---   *   ---   *   ---
 // term utils
@@ -157,6 +180,9 @@ int iopen(void) {
 
 // ^the undo for it
 };void iclose(void) {
+
+  if(*kbd.envdpy) {xkeydl();};
+
   ioctl(kbd.fd,KDSKBMODE,K_XLATE);
   tcsetattr(kbd.fd,TCSAFLUSH,&(kbd.restore));
 
@@ -346,6 +372,62 @@ void keychk(void) {
 
 // ---   *   ---   *   ---
 
+void xkrd(char* ibuff) {
+
+  int i=0;while(XPending(kbd.xdpy) && i<IBF_SZ) {
+
+    XEvent ev;XNextEvent(kbd.xdpy,&ev);
+
+    int idex=ev.xkey.keycode;
+
+    if(XPending(kbd.xdpy)) {
+      XEvent nev;XPeekEvent(kbd.xdpy,&nev);
+
+      if(
+
+        idex==nev.xkey.keycode
+        && nev.xkey.time==ev.xkey.time
+
+      ) {continue;};
+
+    };
+
+    char key=idex-8;
+    key|=0x80*(ev.type==KeyRelease);
+
+    *ibuff=key;ibuff++;i++;
+
+  };
+
+};void krd(char* ibuff) {
+  read(kbd.fd,ibuff,IBF_SZ);
+
+};
+
+// ---   *   ---   *   ---
+// X nit/del
+
+void xkeynt(void) {
+
+  kbd.xdpy=XOpenDisplay(kbd.envdpy);
+  kbd.xwin=(Window) findwin();
+
+  // handle auto repeat
+  { bool r;
+
+    XSelectInput(
+      kbd.xdpy,
+      kbd.xwin,
+      KeyPressMask|KeyReleaseMask
+
+    );/*XkbSetDetectableAutoRepeat(kbd.xdpy,1,&r);*/
+
+  };kbd.f_krd=xkrd;
+
+};void xkeydl(void) {XCloseDisplay(kbd.xdpy);};
+
+// ---   *   ---   *   ---
+
 // KBD constructor
 int keynt(int fd) {
 
@@ -362,6 +444,13 @@ int keynt(int fd) {
     );return -1;
 
   };
+
+  // handle X
+  kbd.envdpy=getenv("DISPLAY");
+  if(*kbd.envdpy) {
+    xkeynt();
+
+  } else {kbd.f_krd=krd;};
 
   // read in nit trash and discard it
   read(kbd.fd,ibuff,IBF_SZ);
@@ -384,7 +473,7 @@ void keyrd(void) {
   *input^=*input;
 
   kbd.evlinger-=kbd.evlinger>0;
-  read(kbd.fd,ibuff,IBF_SZ);
+  kbd.f_krd(ibuff);
 
   // process input
   while(*input) {
