@@ -23,32 +23,6 @@
   my $root=avt::root $ENV{'ARPATH'};chdir $root;
 
 # ---   *   ---   *   ---
-# some macros
-
-  use constant {
-    STRUCT => "CE",
-
-  };use constant {
-    CURSOR => "${ \STRUCT }.cursor",
-    KBD    => "${ \STRUCT }.kbd",
-    WDIM   => "${ \STRUCT }.wsz.ws_",
-    BUSY   => "${ \STRUCT }.evcnt",
-    EVSTK  => "${ \STRUCT }.evstack",
-    EVCNT  => "${ \STRUCT }.evstack_i",
-    CTTY   => "${ \STRUCT }.ctty",
-
-  };use constant {
-    CY     => "${ \CURSOR }.y",
-    CYMN   => '0',
-    CYMX   => "${ \WDIM }row-1",
-
-    CX     => "${ \CURSOR }.x",
-    CXMN   => '0',
-    CXMX   => "${ \WDIM }col-1",
-
-  };
-
-# ---   *   ---   *   ---
 # global storage
 
   my %CACHE=(
@@ -227,18 +201,6 @@ sub rdti {
 
     ],
 
-#    # re/av,beg/end
-#    'GPRV',[KI("re"),undef,CY.'='.CYMN],
-#
-#    'GNXT',[KI("av"),undef,CY.'='.CYMX],
-#
-#    'GBEG',[KI("home"),undef,CX.'='.CXMN],
-#
-#    'GEND',[KI("end"),undef,CX.'='.CXMX],
-#
-#    # del, ret
-#    'EDEL',[KI("del"),undef,''],
-#
     'ERET',[
       KI("ret"),
       rdkfile('./ce/keys/ret.k')
@@ -296,11 +258,6 @@ sub keymap_generator {
 
       # cant think of a smart way to do it
       for(my $j=0;$j<@used_keys;$j++) {
-
-      if(not defined $kcode) {
-        print STDERR "---------$kname\n";last;
-
-      };
 
         if($used_keys[$j]==$kcode) {
           $list->[2]=$j+1;last;
@@ -418,7 +375,7 @@ sub keycalls_generator {
 
         # populate callback arrays
         my $funcname=(!$code)
-          ? "keyskip"
+          ? "nope"
           : "\&K_$suff"."_FUNC_$name"
           ;
 

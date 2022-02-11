@@ -47,20 +47,20 @@
   #include "arstd.h"
 
 // ---   *   ---   *   ---
-// constants
+// constants/defaults
   #define IBF_SZ 0x08
   #define REPEAT_DELAY 4
 
 // ---   *   ---   *   ---
 // macros
   #define IS_TAP(x) \
-    ((kbd.keys[(x)*((x)<K_COUNT)]&0b001)>>0)
+    ((kbd.keys[(x)*((x)<kbd.k_count)]&0b001)>>0)
 
   #define IS_HEL(x) \
-    ((kbd.keys[(x)*((x)<K_COUNT)]&0b010)>>1)
+    ((kbd.keys[(x)*((x)<kbd.k_count)]&0b010)>>1)
 
   #define IS_REL(x) \
-    ((kbd.keys[(x)*((x)<K_COUNT)]&0b100)>>2)
+    ((kbd.keys[(x)*((x)<kbd.k_count)]&0b100)>>2)
 
 typedef void(*rd_func)(char* ibuff);
 
@@ -70,12 +70,18 @@ typedef void(*rd_func)(char* ibuff);
 typedef struct {
 
   // key states
-  int keys[K_COUNT];
+  int* keys;
+  int k_count;
+
+  // translation table
+  char* keylay;
+  int non_ti;
 
   // event tracking
   int evstack[IBF_SZ];
   int evstack_i;
   int evlinger;
+  int evdlay;
   int evcnt;
 
   // textual input
@@ -85,8 +91,10 @@ typedef struct {
   // used to restore tty
   struct termios restore;
 
-  // redundancy
+  // input fd for vt
   int fd;
+
+  // environment
   char* envdpy;
 
   // X stuff
@@ -96,6 +104,28 @@ typedef struct {
   rd_func f_krd;
 
 } KBD;static KBD kbd={0};
+
+// ---   *   ---   *   ---
+// callback tables
+
+  // these are filled out by the client
+  static nihil* K_TAP_FUNCS;
+  static nihil* K_HEL_FUNCS;
+  static nihil* K_REL_FUNCS;
+
+  // just a convenience
+  static nihil* K_FUNCS[3]={0};
+
+// ---   *   ---   *   ---
+// ^this is how
+
+void keycall(
+  char key,
+  int mode,
+
+  nihil func
+
+) {K_FUNCS[mode&3][key+1]=func;};
 
 // ---   *   ---   *   ---
 // getters
@@ -119,15 +149,20 @@ char keytap(char key) {
 };
 
 // ---   *   ---   *   ---
+// setters
+
+void stevdlay(int dlay) {kbd.evdlay=dlay;};
+
+// ---   *   ---   *   ---
 // just to make sure we don't
 // exit without restoring term
 
 void onsegv(int sig) {
   printf(
-    "\n!!(0): "
-    "I messed up the math somewhere\n");
+    "\r\n!!(0): "
+    "I messed up the math somewhere\r\n"
 
-  exit(1);
+  );exit(1);
 
 };
 
@@ -181,8 +216,16 @@ int iopen(void) {
 // ^the undo for it
 };void iclose(void) {
 
+  // free mems
+  free(K_TAP_FUNCS);
+  free(K_HEL_FUNCS);
+  free(K_REL_FUNCS);
+  free(kbd.keys);
+
+  // close X display
   if(*kbd.envdpy) {xkeydl();};
 
+  // restore terminal
   ioctl(kbd.fd,KDSKBMODE,K_XLATE);
   tcsetattr(kbd.fd,TCSAFLUSH,&(kbd.restore));
 
@@ -192,13 +235,13 @@ int iopen(void) {
 
 // clear all states/timers/events
 void kbdcl(void) {
-  memset(kbd.keys,0,K_COUNT*sizeof(kbd.keys[0]));
+  memset(kbd.keys,0,kbd.k_count*sizeof(kbd.keys[0]));
 
 };
 
 // clear state for a single key
 void keycl(char key) {
-  kbd.keys[key*(key<K_COUNT)]^=kbd.keys[key];
+  kbd.keys[key*(key<kbd.k_count)]^=kbd.keys[key];
 
 };
 
@@ -266,52 +309,22 @@ void evpush(char key) {
 };
 
 // ---   *   ---   *   ---
-// callback tables
-
-  // dummy/nop
-  void keyskip(void){;};
-
-  // these are filled out by the client
-  static nihil K_TAP_FUNCS[K_COUNT+1]={keyskip};
-  static nihil K_HEL_FUNCS[K_COUNT+1]={keyskip};
-  static nihil K_REL_FUNCS[K_COUNT+1]={keyskip};
-
-  // just a convenience
-  static nihil* K_FUNCS[3]={
-    K_TAP_FUNCS+0,
-    K_HEL_FUNCS+0,
-    K_REL_FUNCS+0
-
-  };
-
-// ---   *   ---   *   ---
-// ^this is how
-
-void keycall(
-  char key,
-  int mode,
-
-  nihil func
-
-) {K_FUNCS[mode&3][key+1]=func;};
-
-// ---   *   ---   *   ---
 // on-press flipper
 
 void keyset(char key,char rel) {
 
   // translate
-  char x=KEYLAY[key];
+  char x=kbd.keylay[key];
 
   // 0 is unused key or keyboard error
-  if(!x || x>K_COUNT) {return;};x--;
+  if(!x || x>kbd.k_count) {return;};x--;
 
   // tap/hel
   if(!rel) {
 
     // determine IS_TAP
     kbd.keys[x]&=~1;
-    kbd.keys[x]|=(1*(!IS_HEL(x))|(x>=NON_TI));
+    kbd.keys[x]|=(1*(!IS_HEL(x))|(x>=kbd.non_ti));
 
     // ^make corresponding call if so
     K_TAP_FUNCS[(x+1)*IS_TAP(x)]();
@@ -353,10 +366,10 @@ void keychk(void) {
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
-    kbd.keys[x]+=(1*(ind_repeat<REPEAT_DELAY))<<8;
+    kbd.keys[x]+=(1*(ind_repeat<kbd.evdlay))<<8;
 
     // get repeat triggers this frame
-    repeat=(repeat!=0)|(ind_repeat==REPEAT_DELAY);
+    repeat=(repeat!=0)|(ind_repeat==kbd.evdlay);
     K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat]();
 
     // update event count, set bits
@@ -377,24 +390,27 @@ void xkrd(char* ibuff) {
   int i=0;while(XPending(kbd.xdpy) && i<IBF_SZ) {
 
     XEvent ev;XNextEvent(kbd.xdpy,&ev);
+    int key=ev.xkey.keycode;
 
-    int idex=ev.xkey.keycode;
-
+    // FIXME: handling repeat this way
+    // until we fix the xkb call
     if(XPending(kbd.xdpy)) {
       XEvent nev;XPeekEvent(kbd.xdpy,&nev);
 
       if(
 
-        idex==nev.xkey.keycode
+        key==nev.xkey.keycode
         && nev.xkey.time==ev.xkey.time
 
       ) {continue;};
 
     };
 
-    char key=idex-8;
-    key|=0x80*(ev.type==KeyRelease);
+    // X keycode is just linux keycode+8 ;>
+    key-=8;
 
+    // set high bit for release events
+    key|=0x80*(ev.type==KeyRelease);
     *ibuff=key;ibuff++;i++;
 
   };
@@ -412,6 +428,7 @@ void xkeynt(void) {
   kbd.xdpy=XOpenDisplay(kbd.envdpy);
   kbd.xwin=(Window) findwin();
 
+  // FIXME: stack smash on naughty call
   // handle auto repeat
   { bool r;
 
@@ -420,6 +437,7 @@ void xkeynt(void) {
       kbd.xwin,
       KeyPressMask|KeyReleaseMask
 
+    // naughty ;<
     );/*XkbSetDetectableAutoRepeat(kbd.xdpy,1,&r);*/
 
   };kbd.f_krd=xkrd;
@@ -429,11 +447,23 @@ void xkeynt(void) {
 // ---   *   ---   *   ---
 
 // KBD constructor
-int keynt(int fd) {
+int keynt(
+  int fd,
 
-  memset(&kbd,0,sizeof(KBD));kbd.fd=fd;
+  char* keylay,
+  int k_count,
+  int non_ti
 
-  char ibuff[IBF_SZ];
+) {
+
+  memset(&kbd,0,sizeof(KBD));
+
+  kbd.fd=fd;
+  kbd.evdlay=REPEAT_DELAY;
+  kbd.k_count=k_count;
+
+  kbd.keylay=keylay;
+  kbd.non_ti=non_ti;
 
   // go into raw mode
   if(iopen()) {
@@ -445,6 +475,19 @@ int keynt(int fd) {
 
   };
 
+  // allocate keys array
+  kbd.keys=malloc(sizeof(int)*k_count);
+
+  // allocate callback arrays
+  K_TAP_FUNCS=malloc(sizeof(nihil)*(k_count+1));
+  K_HEL_FUNCS=malloc(sizeof(nihil)*(k_count+1));
+  K_REL_FUNCS=malloc(sizeof(nihil)*(k_count+1));
+
+  // set these for the loadkeys
+  K_FUNCS[0]=K_TAP_FUNCS;K_TAP_FUNCS[0]=nope;
+  K_FUNCS[1]=K_HEL_FUNCS;K_HEL_FUNCS[0]=nope;
+  K_FUNCS[2]=K_REL_FUNCS;K_REL_FUNCS[0]=nope;
+
   // handle X
   kbd.envdpy=getenv("DISPLAY");
   if(*kbd.envdpy) {
@@ -453,13 +496,17 @@ int keynt(int fd) {
   } else {kbd.f_krd=krd;};
 
   // read in nit trash and discard it
+  char ibuff[IBF_SZ];
   read(kbd.fd,ibuff,IBF_SZ);
+
   { int d=8;while(d--) {
       read(kbd.fd,ibuff,IBF_SZ);
       usleep(0x6000);
 
     };
   };
+
+  return 0;
 };
 
 // ---   *   ---   *   ---

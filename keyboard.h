@@ -9,30 +9,57 @@ extern "C" {
 // deps
 
   #include "ardef.h"
-  #include "keymap.h"
 
 // ---   *   ---   *   ---
 // methods
 
 // start the input handler
-int keynt(int fd);
+int keynt(
+
+  // input file
+  int fd,
+
+  // key table data
+  char* keylay,
+  int k_count,
+  int non_ti
+
+);
+
+// convenience macro
+#define KEYNT(fd) keynt(fd,&KEYLAY,K_COUNT,NON_TI)
+
+// ---   *   ---   *   ---
 
 // clear out state for a key
 void keycl(char key);
 
 // set key callback
-void keycall(char key,int mode,nihil func);
+void keycall(
+
+  // key name & mode (0:tap,1:hel,2:rel)
+  char key,
+  int mode,
+
+  // pointer to void func(void)
+  nihil func
+
+);
+
+// ---   *   ---   *   ---
+
+// set repeat delay
+void stevdlay(int dlay);
 
 // get tap/hel/rel state
 char keytap(char key);
 char keyhel(char key);
 char keyrel(char key);
 
+// ---   *   ---   *   ---
+
 // postpone repeat delay
 void keycool(void);
-
-// dummy, exposed for convenience
-void keyskip(void);
 
 // capture input
 void keyrd(void);

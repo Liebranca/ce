@@ -27,12 +27,17 @@ sub generator {
 
   for(my $i=0;$i<256;$i++) {
 
-    my $h=sprintf "%02X",$i;
+    my $c=($i<0x20 || $i>0x7F)
+      ? $i+0x100
+      : $i
+      ;
+
+    my $h=sprintf "%04X",$c;
     if(!($i%4)) {
       if($i) {print $FH "\"\n  ";};
       print $FH 'L"';
 
-    };print $FH "\\x01$h";
+    };print $FH "\\x$h";
 
   };print $FH "\"\n;\n";
 

@@ -22,6 +22,8 @@
 
   #include "clock.h"
   #include "display.h"
+
+  #include "keymap.h"
   #include "keyboard.h"
 
 // ---   *   ---   *   ---
@@ -116,7 +118,7 @@ void main(int argc,char** argv) {
   dpynt(STDOUT_FILENO);
 
   // open input handler  
-  if(keynt(STDIN_FILENO)) {
+  if(KEYNT(STDIN_FILENO)) {
     fprintf(stderr,"Aborted\n");
     exit(-1);
 
