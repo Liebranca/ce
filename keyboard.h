@@ -20,14 +20,14 @@ int keynt(
   int fd,
 
   // key table data
-  char* keylay,
+  const char* keylay,
   int k_count,
   int non_ti
 
 );
 
 // convenience macro
-#define KEYNT(fd) keynt(fd,&KEYLAY,K_COUNT,NON_TI)
+#define KEYNT(fd) keynt(fd,&(KEYLAY[0]),K_COUNT,NON_TI)
 
 // ---   *   ---   *   ---
 

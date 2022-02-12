@@ -74,7 +74,7 @@ typedef struct {
   int k_count;
 
   // translation table
-  char* keylay;
+  const char* keylay;
   int non_ti;
 
   // event tracking
@@ -125,7 +125,7 @@ void keycall(
 
   nihil func
 
-) {K_FUNCS[mode&3][key+1]=func;};
+) {K_FUNCS[mode*(mode<=2)][key+1]=func;};
 
 // ---   *   ---   *   ---
 // getters
@@ -450,7 +450,7 @@ void xkeynt(void) {
 int keynt(
   int fd,
 
-  char* keylay,
+  const char* keylay,
   int k_count,
   int non_ti
 
@@ -462,7 +462,7 @@ int keynt(
   kbd.evdlay=REPEAT_DELAY;
   kbd.k_count=k_count;
 
-  kbd.keylay=keylay;
+  kbd.keylay=(const char*)keylay;
   kbd.non_ti=non_ti;
 
   // go into raw mode
