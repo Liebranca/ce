@@ -346,7 +346,6 @@ void keyset(char key,char rel) {
   // unregister event
   evpop(x);
 
-
 };
 
 // ---   *   ---   *   ---
@@ -362,7 +361,7 @@ void keychk(void) {
   int repeat=0;
 
   // iter events
-  while(*ev) {int x=*ev;
+  while((*ev)<kbd.evstack_i) {int x=*ev;
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
@@ -375,6 +374,7 @@ void keychk(void) {
     // update event count, set bits
     kbd.evcnt+=(kbd.keys[x]&0b111)!=0;
     kbd.keys[x]|=2*IS_TAP(x);
+
     kbd.keys[x]&=~5;
 
     // go to next
@@ -537,3 +537,4 @@ void keyrd(void) {
 };
 
 // ---   *   ---   *   ---
+

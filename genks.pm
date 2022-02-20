@@ -136,6 +136,7 @@ EOF
 sub rdti {
 
   my $tifile=shift;
+  if(!$tifile) {return ();};
 
   my @table=split "\n",`cat $tifile`;
   my @map=();
