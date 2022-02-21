@@ -340,7 +340,8 @@ sub keycalls_generator {
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
 
   my $result='';
-  my $evtable="void K_FUNCS_LOAD(void) {\n";
+  my $evtable="#ifndef K_FUNCS_LOAD\n".
+    "#define K_FUNCS_LOAD \\\n";
 
   my $evfuncs=['void:void','','',''];
 
@@ -376,7 +377,7 @@ sub keycalls_generator {
           : "\&K_$suff"."_FUNC_$name"
           ;
 
-        $evtable.="keycall(K_$name,$j,$funcname);\n";
+        $evtable.="keycall(K_$name,$j,$funcname);\\\n";
         $j++;
 
 # ---   *   ---   *   ---
@@ -396,7 +397,7 @@ sub keycalls_generator {
 
 # ---   *   ---   *   ---
 
-  $result.=( $evfuncs->[3] ).$evtable."\n};\n";
+  $result.=( $evfuncs->[3] ).$evtable."\n#endif\n";
   print $FH $result;
 
 };

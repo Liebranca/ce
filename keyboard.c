@@ -361,7 +361,9 @@ void keychk(void) {
   int repeat=0;
 
   // iter events
-  while((*ev)<kbd.evstack_i) {int x=*ev;
+  while((ev)<(kbd.evstack+kbd.evstack_i)) {
+
+    int x=*ev;
 
     // get held counter and tick
     int ind_repeat=(kbd.keys[x]&0xFF00)>>8;
@@ -532,8 +534,7 @@ void keyrd(void) {
 
     *input=(*input)>>8;
 
-  };keychk();
-
+  };
 };
 
 // ---   *   ---   *   ---

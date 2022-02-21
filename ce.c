@@ -136,7 +136,7 @@ void main(int argc,char** argv) {
   );
 
   // populate input callback arrays
-  K_FUNCS_LOAD();
+  K_FUNCS_LOAD;
 
 // ---   *   ---   *   ---
 
@@ -155,7 +155,7 @@ void main(int argc,char** argv) {
     );tick(gtevcnt());
 
     // run event loop
-    keyrd();pti();
+    keyrd();keychk();pti();
 
 // ---   *   ---   *   ---
 // cleanup

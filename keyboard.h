@@ -64,6 +64,9 @@ void keycool(void);
 // capture input
 void keyrd(void);
 
+// process events
+void keychk(void);
+
 // save input char
 void keyibs(char key);
 
