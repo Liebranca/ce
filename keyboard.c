@@ -74,7 +74,7 @@ typedef struct {
   int k_count;
 
   // translation table
-  const char* keylay;
+  char* keylay;
   int non_ti;
 
   // event tracking
@@ -452,7 +452,7 @@ void xkeynt(void) {
 int keynt(
   int fd,
 
-  const char* keylay,
+  char* keylay,
   int k_count,
   int non_ti
 
@@ -464,7 +464,7 @@ int keynt(
   kbd.evdlay=REPEAT_DELAY;
   kbd.k_count=k_count;
 
-  kbd.keylay=(const char*)keylay;
+  kbd.keylay=keylay;
   kbd.non_ti=non_ti;
 
   // go into raw mode
@@ -479,16 +479,25 @@ int keynt(
 
   // allocate keys array
   kbd.keys=malloc(sizeof(int)*k_count);
+  memset(kbd.keys,0,sizeof(int)*k_count);
 
   // allocate callback arrays
   K_TAP_FUNCS=malloc(sizeof(nihil)*(k_count+1));
   K_HEL_FUNCS=malloc(sizeof(nihil)*(k_count+1));
   K_REL_FUNCS=malloc(sizeof(nihil)*(k_count+1));
 
+  // initialize to no-op
+  for(int x=0;x<k_count+1;x++) {
+    K_TAP_FUNCS[x]=nope;
+    K_HEL_FUNCS[x]=nope;
+    K_REL_FUNCS[x]=nope;
+
+  };
+
   // set these for the loadkeys
-  K_FUNCS[0]=K_TAP_FUNCS;K_TAP_FUNCS[0]=nope;
-  K_FUNCS[1]=K_HEL_FUNCS;K_HEL_FUNCS[0]=nope;
-  K_FUNCS[2]=K_REL_FUNCS;K_REL_FUNCS[0]=nope;
+  K_FUNCS[0]=K_TAP_FUNCS;
+  K_FUNCS[1]=K_HEL_FUNCS;
+  K_FUNCS[2]=K_REL_FUNCS;
 
   // handle X
   kbd.envdpy=getenv("DISPLAY");
@@ -528,8 +537,8 @@ void keyrd(void) {
   while(*input) {
 
     char key_id=(*input)&0x7F;
-
     char key_rel=((*input)&0xFF)==(key_id+0x80);
+
     keyset(key_id,key_rel);
 
     *input=(*input)>>8;

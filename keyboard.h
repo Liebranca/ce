@@ -20,7 +20,7 @@ int keynt(
   int fd,
 
   // key table data
-  const char* keylay,
+  char* keylay,
   int k_count,
   int non_ti
 

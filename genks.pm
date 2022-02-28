@@ -18,6 +18,25 @@ package genks;
   use strict;
   use warnings;
 
+  BEGIN {
+
+    use lib $ENV{'ARPATH'}.'/lib/';
+    use avt;
+
+    my ($src,$dst)=(
+
+      $ENV{'ARPATH'}.'/ce/genks.pm',
+      $ENV{'ARPATH'}.'/lib/genks.pm'
+
+    );
+
+    if(avt::ot($dst,$src)) {
+      `cp $src $dst`
+
+    };
+
+  };
+
   use lib $ENV{'ARPATH'}.'/lib/';
   use avt;
 
@@ -213,6 +232,52 @@ sub process_keymap {
   # read text-input config
   push @KEYMAP,rdti($tifile);
   $CACHE{-KEYMAP}=\@KEYMAP;
+
+};
+
+# ---   *   ---   *   ---
+
+sub pl_keymap {
+
+  my @KEYMAP=@{ $CACHE{-KEYMAP} };
+  my $ref=shift;
+
+  # get (used_indices:used_values)
+  my @used_keys=();{
+    for(my $i=1;$i<@KEYMAP;$i+=2) {
+      push @used_keys,$KEYMAP[$i]->[0];
+
+    };
+
+  };
+
+# ---   *   ---   *   ---
+  
+  my @keylay=();
+
+  my @lay=@{ $CACHE{-LAYOUT_I} };
+  my $i=0;while(@lay) {
+    my $kname=shift @lay;
+    my $kcode=KI($kname);
+
+    $keylay[$i]="\x00";
+
+    # cant think of a smart way to do it
+    for(my $j=0;$j<@used_keys;$j++) {
+
+      if($used_keys[$j]==$kcode) {
+
+        $keylay[$i]=sprintf "%c",$j+1;
+        $ref->{$KEYMAP[$j*2]}=$j;
+
+        last;
+
+      };
+
+    };$i++;
+  };
+
+  return (join '',@keylay),$#used_keys+1,$#used_keys+1;
 
 };
 
