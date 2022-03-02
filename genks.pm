@@ -18,25 +18,6 @@ package genks;
   use strict;
   use warnings;
 
-  BEGIN {
-
-    use lib $ENV{'ARPATH'}.'/lib/';
-    use avt;
-
-    my ($src,$dst)=(
-
-      $ENV{'ARPATH'}.'/ce/genks.pm',
-      $ENV{'ARPATH'}.'/lib/genks.pm'
-
-    );
-
-    if(avt::ot($dst,$src)) {
-      `cp $src $dst`
-
-    };
-
-  };
-
   use lib $ENV{'ARPATH'}.'/lib/';
   use avt;
 
@@ -239,8 +220,20 @@ sub process_keymap {
 
 sub pl_keymap {
 
+  my $href=shift;
+  my $aref=shift;
+
+  my $non_ti=shift;
+
+  $non_ti=(!(defined $non_ti))
+    ? length(keys %$href)
+    : $non_ti
+    ;
+
+  process_keymap($aref,'');
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
-  my $ref=shift;
+
+# ---   *   ---   *   ---
 
   # get (used_indices:used_values)
   my @used_keys=();{
@@ -268,7 +261,7 @@ sub pl_keymap {
       if($used_keys[$j]==$kcode) {
 
         $keylay[$i]=sprintf "%c",$j+1;
-        $ref->{$KEYMAP[$j*2]}=$j;
+        $href->{$KEYMAP[$j*2]}=$j;
 
         last;
 
@@ -277,7 +270,19 @@ sub pl_keymap {
     };$i++;
   };
 
-  return (join '',@keylay),$#used_keys+1,$#used_keys+1;
+# ---   *   ---   *   ---
+
+  return (
+
+    0,
+
+    (join '',@keylay),
+    $#used_keys+1,
+    $non_ti
+
+    #$CACHE{-NON_TI}
+
+  );
 
 };
 

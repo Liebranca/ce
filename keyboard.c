@@ -375,9 +375,13 @@ void keychk(void) {
 
     // update event count, set bits
     kbd.evcnt+=(kbd.keys[x]&0b111)!=0;
-    kbd.keys[x]|=2*IS_TAP(x);
 
-    kbd.keys[x]&=~5;
+    kbd.keys[x]&=~(4+IS_HEL(x));
+    kbd.keys[x]|=
+      (2*IS_TAP(x))
+      |((x>=kbd.non_ti)*repeat);
+
+    kbd.keys[x]&=~ ((repeat*0xFF00)*(x>=kbd.non_ti));
 
     // go to next
     ev++;

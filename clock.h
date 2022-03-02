@@ -17,7 +17,7 @@ extern "C" {
 // nit a new program clock
 void clknt(
   uint64_t flen,
-  const wchar_t* v,
+  wchar_t* v,
   uint32_t vsz
 
 );

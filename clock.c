@@ -32,7 +32,7 @@ typedef struct {
   uint64_t delta;
 
   // chars for drawing
-  const wchar_t* v;
+  wchar_t* v;
   uint32_t vix;
   uint32_t vsz;
 
@@ -43,11 +43,20 @@ typedef struct {
 // constructor
 void clknt(
   uint64_t flen,
-  const wchar_t* v,
+  wchar_t* v,
   uint32_t vsz
 
-) { memset(&c,0,sizeof(CLK));
-    c=(CLK) {0,clock(),flen,0,v,0,vsz};
+) {
+
+  memset(&c,0,sizeof(CLK));
+  static wchar_t s[0x80];
+
+  for(int x=0;x<vsz;x++) {
+    s[x]=*(v+x);
+
+  };
+
+  c=(CLK) {0,clock(),flen,0,s,0,vsz};
 
 };
 
@@ -75,7 +84,7 @@ void tick(int busy) {
 // return clock char at this frame
 // useless but cute
 wchar_t clkdr(void) {
-  return c.v[c.vix];
+  return *(c.v+c.vix);
 
 };
 
