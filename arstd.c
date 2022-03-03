@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
 // ---   *   ---   *   ---
 // mem stuff
@@ -234,18 +235,41 @@ void swtty(int dir,char* ctty) {
 
 // ---   *   ---   *   ---
 
+void ttysz(int* dst) {
+
+  struct winsize w;
+  ioctl(1,TIOCGWINSZ,&w);
+
+  dst[0]=w.ws_col;
+  dst[1]=w.ws_row;
+
+};
+
+// ---   *   ---   *   ---
+
 int findwin(void) {
 
-  char wid[64];
-  int pid=getpid();
-
-  sprintf(wid,"%u",pid);
-  char* ex_argv[]={"wpid",wid+0};
-
-  strcpy(wid, ex(PASS_ARGV(ex_argv)) );
-
   char* eptr;
-  return (int) strtoul(wid,&eptr,10);
+  return (int) strtoul(
+
+    getenv("WINDOWID"),
+    &eptr,10
+
+  );
+
+// NOTE: this is for PID->WID lookup
+// ... we actually don't need it ;>
+
+//  char wid[64];
+//  int pid=getpid();
+//
+//  sprintf(wid,"%u",pid);
+//  char* ex_argv[]={"wpid",wid+0};
+//
+//  strcpy(wid, ex(PASS_ARGV(ex_argv)) );
+//
+//  char* eptr;
+//  return (int) strtoul(wid,&eptr,10);
 
 };
 
