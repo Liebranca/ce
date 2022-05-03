@@ -13,13 +13,7 @@
 # lyeb,
 # ---   *   ---   *   ---
 
-# getters for the extensions
-
-sub clk {return lycon::clk;};
-sub kbd {return lycon::kbd;};
-sub dpy {return lycon::dpy;};
-
-# ---   *   ---   *   ---
+sub nope {;};
 1; # ret
 
 package lycon::clk;
@@ -32,7 +26,7 @@ package lycon::clk;
 # ---   *   ---   *   ---
 # global state
 
-my %CACHE=(
+my %CLK=(
 
   -FLEN=>0x6000,
 
@@ -49,21 +43,21 @@ my %CACHE=(
 
 sub flen {
   return avt::getset(
-    \%CACHE,-FLEN,shift
+    \%CLK,-FLEN,shift
 
   );
 };
 
 sub vsz {
   return avt::getset(
-    \%CACHE,-VSZ,shift
+    \%CLK,-VSZ,shift
 
   );
 };
 
-sub flen {
+sub vis {
   return avt::getset(
-    \%CACHE,-VIS,shift
+    \%CLK,-VIS,shift
 
   );
 };
@@ -89,6 +83,8 @@ package lycon::kbd;
   use warnings;
 
   use lib $ENV{'ARPATH'}.'/lib/';
+
+  use lang;
 
   use avt;
   use genks;
@@ -142,7 +138,7 @@ sub DEFINE {
   my $onHel=shift;
   my $onRel=shift;
 
-  my $idex=%KEYS{$key}*2;
+  my $idex=$KEYS{$key}*2;
   $KEYS[$idex]->[1]=($onTap)
     ? $onTap : $KEYS[$idex]->[1];
 
@@ -161,7 +157,7 @@ sub DEFINE {
   my $key=shift;
   HASKEY($key);
 
-  my $idex=%KEYS{$key}*2;
+  my $idex=$KEYS{$key}*2;
 
   return (
     $key,
@@ -180,7 +176,7 @@ sub DEFINE {
 sub nit {
 
   %KEYS=@KEYS;
-  lycon::kbdnt(genks::pl_keymap(\@KEYS,\%KEYS));
+  lycon::keynt(genks::pl_keymap(\@KEYS,\%KEYS));
 
   ldkeys();
 
@@ -191,10 +187,10 @@ sub nit {
 
 sub ldkeys {
 
-  for my $key(my $x=1;$x<@KEYS;$x+=2) {
+  for(my $x=1;$x<@KEYS;$x+=2) {
 
     my $name=$KEYS[$x-1];
-    my @ar=@{$KEYS[$x]->[1,2,3]};
+    my @ar=@{$KEYS[$x]}[1..3];
 
     my $i=0;
 
@@ -202,9 +198,11 @@ sub ldkeys {
     # ie, callable from C
     for my $ev(@ar) {
 
-      if($ev) {
-        $ev=lycon::ffi()->closure($ev);
-        lycon::keycall($KEYS{$name},$i,$ev);
+      if(lang::is_code($ev)) {
+        my $cev=lycon::ffi->closure($ev);
+        $cev->sticky();
+
+        lycon::keycall($KEYS{$name},$i,$cev);
 
       };$i++;
 
@@ -221,13 +219,14 @@ package lycon::dpy;
 
 # ---   *   ---   *   ---
 
-BEGIN {
+sub beg {
   print "\e[0m\e[1J\e[1;1H\e[?25h";
+  STDOUT->flush();
 
 };
 
-END {
-  print "\e[?25l\e[1J\e[1;1H"
+sub end {
+  #print "\e[?25l\e[1J\e[1;1H"
 
 };
 
@@ -240,39 +239,39 @@ package lycon::loop;
 # ---   *   ---   *   ---
 # global state
 
-my %CACHE=(
+my %LOOP=(
 
   -DRAW_PROC=>sub {return '';},
   -LOGI_PROC=>sub {;},
   -QUIT_PROC=>sub {return 0;},
 
-  -DRAW_UPDATE=> sub {return 1;};
+  -DRAW_UPDATE=> sub {return 1;},
 
 );
 
 # ---   *   ---   *   ---
 # getters
 
-sub logic {return $CACHE{-LOGI_PROC}->();};
+sub logic {return $LOOP{-LOGI_PROC}->();};
 
-sub quit {return $CACHE{-QUIT_PROC}->();};
-sub draw {return $CACHE{-DRAW_PROC}->();};
-sub draw_update {return $CACHE{-DRAW_UPDATE}->();};
+sub quit {return $LOOP{-QUIT_PROC}->();};
+sub draw {return $LOOP{-DRAW_PROC}->();};
+sub draw_update {return $LOOP{-DRAW_UPDATE}->();};
 
 # ---   *   ---   *   ---
 # setters
 
-sub set_logic {$CACHE{-LOGI_PROC}=shift;};
-sub set_quit {$CACHE{-EXIT_PROC}=shift;};
-sub set_draw {$CACHE{-DRAW_PROC}=shift;};
-sub set_draw_update {$CACHE{-DRAW_UPDATE}=shift;};
+sub set_logic {$LOOP{-LOGI_PROC}=shift;};
+sub set_quit {$LOOP{-QUIT_PROC}=shift;};
+sub set_draw {$LOOP{-DRAW_PROC}=shift;};
+sub set_draw_update {$LOOP{-DRAW_UPDATE}=shift;};
 
 # ---   *   ---   *   ---
 # execute the main loop
 
 sub run {
 
-  while(!quit) {
+  while(!quit()) {
 
     my $busy=lycon::gtevcnt();
 
@@ -293,3 +292,4 @@ sub run {
 };
 
 # ---   *   ---   *   ---
+1; # ret

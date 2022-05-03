@@ -19,6 +19,8 @@ package genks;
   use warnings;
 
   use lib $ENV{'ARPATH'}.'/lib/';
+
+  use lang;
   use avt;
 
 # ---   *   ---   *   ---
@@ -96,13 +98,9 @@ sub rdkfile {
   my $rel=(split "onRel\n",$s)[1];
 
   for my $ev ($tap,$hel,$rel) {
-    if((index $ev,'None')>-1) {
-      $ev=('',';')[$pl_keys];
+    if((index $ev,'None')>-1) {$ev='';};
 
-    };
-  };
-
-  return ($tap,$hel,$rel);
+  };return ($tap,$hel,$rel);
 
 };
 
@@ -184,7 +182,6 @@ sub process_keymap {
 
   my @KEYMAP=@{ $_[0] };shift;
   my $tifile=shift;
-  my $pl_keys=shift;
 
 # ---   *   ---   *   ---
 
@@ -198,7 +195,7 @@ sub process_keymap {
     # read callbacks from file
     if(-e $ar->[1]) {
       my $kfile=pop @$ar;
-      push @$ar,rdkfile($kfile,$pl_keys);
+      push @$ar,rdkfile($kfile);
 
     # or just ensure they are not undef
     } else {
@@ -236,20 +233,28 @@ sub pl_keymap {
     : $non_ti
     ;
 
-  process_keymap($aref,'',1);
+  process_keymap($aref,'');
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
 
 # ---   *   ---   *   ---
 
   # get (used_indices:used_values)
   my @used_keys=();{
+
     for(my $i=1;$i<@KEYMAP;$i+=2) {
       push @used_keys,$KEYMAP[$i]->[0];
 
       # convert code string to code reference
-      for my $ev(@{$KEYMAP[$i]->[1,2,3]}) {
-        if($ev=~ m/^CODE\(0x[0-9a-f]+\)/) {
+      my @evs=@{$KEYMAP[$i]}[1..3];
+      for my $ev(@evs) {
+
+        if(!lang::is_code($ev)
+        && length $ev
+
+        ) {
+
           $ev=eval("sub {$ev;};");
+printf "$ev\n";
 
         };
       };
