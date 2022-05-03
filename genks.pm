@@ -80,6 +80,8 @@ sub KI {
 sub rdkfile {
 
   my $fpath=shift;
+  my $pl_keys=shift;
+
   if(!(-e $fpath)) {
     print "Can't find $fpath";
     exit;
@@ -94,7 +96,10 @@ sub rdkfile {
   my $rel=(split "onRel\n",$s)[1];
 
   for my $ev ($tap,$hel,$rel) {
-    if((index $ev,'None')>-1) {$ev='';};
+    if((index $ev,'None')>-1) {
+      $ev=('',';')[$pl_keys];
+
+    };
   };
 
   return ($tap,$hel,$rel);
@@ -179,6 +184,7 @@ sub process_keymap {
 
   my @KEYMAP=@{ $_[0] };shift;
   my $tifile=shift;
+  my $pl_keys=shift;
 
 # ---   *   ---   *   ---
 
@@ -192,7 +198,7 @@ sub process_keymap {
     # read callbacks from file
     if(-e $ar->[1]) {
       my $kfile=pop @$ar;
-      push @$ar,rdkfile($kfile);
+      push @$ar,rdkfile($kfile,$pl_keys);
 
     # or just ensure they are not undef
     } else {
@@ -220,8 +226,8 @@ sub process_keymap {
 
 sub pl_keymap {
 
-  my $href=shift;
   my $aref=shift;
+  my $href=shift;
 
   my $non_ti=shift;
 
@@ -230,7 +236,7 @@ sub pl_keymap {
     : $non_ti
     ;
 
-  process_keymap($aref,'');
+  process_keymap($aref,'',1);
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
 
 # ---   *   ---   *   ---
@@ -240,12 +246,19 @@ sub pl_keymap {
     for(my $i=1;$i<@KEYMAP;$i+=2) {
       push @used_keys,$KEYMAP[$i]->[0];
 
+      # convert code string to code reference
+      for my $ev(@{$KEYMAP[$i]->[1,2,3]}) {
+        if($ev=~ m/^CODE\(0x[0-9a-f]+\)/) {
+          $ev=eval("sub {$ev;};");
+
+        };
+      };
     };
 
   };
 
 # ---   *   ---   *   ---
-  
+
   my @keylay=();
 
   my @lay=@{ $CACHE{-LAYOUT_I} };
@@ -279,8 +292,6 @@ sub pl_keymap {
     (join '',@keylay),
     $#used_keys+1,
     $non_ti
-
-    #$CACHE{-NON_TI}
 
   );
 

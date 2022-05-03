@@ -1,0 +1,295 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+#:CUT;>
+# ---   *   ---   *   ---
+# LYCON_EXT
+# Extends lycon with classes
+#
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+#
+# CONTRIBUTORS
+# lyeb,
+# ---   *   ---   *   ---
+
+# getters for the extensions
+
+sub clk {return lycon::clk;};
+sub kbd {return lycon::kbd;};
+sub dpy {return lycon::dpy;};
+
+# ---   *   ---   *   ---
+1; # ret
+
+package lycon::clk;
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/lib/';
+  use avt;
+
+# ---   *   ---   *   ---
+# global state
+
+my %CACHE=(
+
+  -FLEN=>0x6000,
+
+  -VSZ=>8,
+  -VIS=>
+
+    "\x{01A9}\x{01AA}\x{01AB}\x{01AC}".
+    "\x{01AD}\x{01AE}\x{01AF}\x{01B0}",
+
+);
+
+# ---   *   ---   *   ---
+# get/set
+
+sub flen {
+  return avt::getset(
+    \%CACHE,-FLEN,shift
+
+  );
+};
+
+sub vsz {
+  return avt::getset(
+    \%CACHE,-VSZ,shift
+
+  );
+};
+
+sub flen {
+  return avt::getset(
+    \%CACHE,-VIS,shift
+
+  );
+};
+
+
+# ---   *   ---   *   ---
+# constructor
+
+sub nit {
+
+  flen(shift);
+  vis(shift);
+  vsz(shift);
+
+  lycon::clknt(flen,vis,vsz);
+
+};
+
+# ---   *   ---   *   ---
+
+package lycon::kbd;
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use avt;
+  use genks;
+
+# ---   *   ---   *   ---
+# global state
+
+my @KEYS=();
+my %KEYS=();
+
+# ---   *   ---   *   ---
+# getters
+
+sub HASKEY {
+
+  my $key=shift;
+
+  if(!exists $KEYS{$key}) {
+    printf "No key $key was registered at nit\n";
+    return;
+
+  };
+};
+
+# ---   *   ---   *   ---
+# in: user-given name,keylay name,code reference
+# add a key to the event list
+
+sub DEFINE {
+
+  my $key=shift;
+  my $id=shift;
+
+  my $onTap=shift;
+  my $onHel=shift;
+  my $onRel=shift;
+
+  push @KEYS,$key;
+  push @KEYS,[$id,$onTap,$onHel,$onRel];
+
+# ---   *   ---   *   ---
+# in:user-given name, callbacks list
+# swap out callbacks on this key
+
+};sub REDEF {
+
+  my $key=shift;
+  HASKEY($key);
+
+  my $onTap=shift;
+  my $onHel=shift;
+  my $onRel=shift;
+
+  my $idex=%KEYS{$key}*2;
+  $KEYS[$idex]->[1]=($onTap)
+    ? $onTap : $KEYS[$idex]->[1];
+
+  $KEYS[$idex]->[2]=($onHel)
+    ? $onHel : $KEYS[$idex]->[2];
+
+  $KEYS[$idex]->[3]=($onRel)
+    ? $onRel : $KEYS[$idex]->[3];
+
+# ---   *   ---   *   ---
+# in: user-given name
+# store callbacks on this key
+
+};sub SVDEF {
+
+  my $key=shift;
+  HASKEY($key);
+
+  my $idex=%KEYS{$key}*2;
+
+  return (
+    $key,
+
+    $KEYS[$idex]->[1],
+    $KEYS[$idex]->[2],
+    $KEYS[$idex]->[3],
+
+  );
+
+};
+
+# ---   *   ---   *   ---
+# register events
+
+sub nit {
+
+  %KEYS=@KEYS;
+  lycon::kbdnt(genks::pl_keymap(\@KEYS,\%KEYS));
+
+  ldkeys();
+
+};
+
+# ---   *   ---   *   ---
+# load callbacks
+
+sub ldkeys {
+
+  for my $key(my $x=1;$x<@KEYS;$x+=2) {
+
+    my $name=$KEYS[$x-1];
+    my @ar=@{$KEYS[$x]->[1,2,3]};
+
+    my $i=0;
+
+    # convert perl subs to closures
+    # ie, callable from C
+    for my $ev(@ar) {
+
+      if($ev) {
+        $ev=lycon::ffi()->closure($ev);
+        lycon::keycall($KEYS{$name},$i,$ev);
+
+      };$i++;
+
+    };
+
+  };
+};
+
+# ---   *   ---   *   ---
+
+package lycon::dpy;
+  use strict;
+  use warnings;
+
+# ---   *   ---   *   ---
+
+BEGIN {
+  print "\e[0m\e[1J\e[1;1H\e[?25h";
+
+};
+
+END {
+  print "\e[?25l\e[1J\e[1;1H"
+
+};
+
+# ---   *   ---   *   ---
+
+package lycon::loop;
+  use strict;
+  use warnings;
+
+# ---   *   ---   *   ---
+# global state
+
+my %CACHE=(
+
+  -DRAW_PROC=>sub {return '';},
+  -LOGI_PROC=>sub {;},
+  -QUIT_PROC=>sub {return 0;},
+
+  -DRAW_UPDATE=> sub {return 1;};
+
+);
+
+# ---   *   ---   *   ---
+# getters
+
+sub logic {return $CACHE{-LOGI_PROC}->();};
+
+sub quit {return $CACHE{-QUIT_PROC}->();};
+sub draw {return $CACHE{-DRAW_PROC}->();};
+sub draw_update {return $CACHE{-DRAW_UPDATE}->();};
+
+# ---   *   ---   *   ---
+# setters
+
+sub set_logic {$CACHE{-LOGI_PROC}=shift;};
+sub set_quit {$CACHE{-EXIT_PROC}=shift;};
+sub set_draw {$CACHE{-DRAW_PROC}=shift;};
+sub set_draw_update {$CACHE{-DRAW_UPDATE}=shift;};
+
+# ---   *   ---   *   ---
+# execute the main loop
+
+sub run {
+
+  while(!quit) {
+
+    my $busy=lycon::gtevcnt();
+
+    if(draw_update) {
+      print "\e[1;1H".(draw)
+
+    };
+
+    lycon::tick($busy);
+
+    lycon::keyrd();
+    lycon::keychk();
+
+    (logic);
+
+  };
+
+};
+
+# ---   *   ---   *   ---
