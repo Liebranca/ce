@@ -94,6 +94,7 @@ package lycon::kbd;
 
 my @KEYS=();
 my %KEYS=();
+my @SWKEYS=();
 
 # ---   *   ---   *   ---
 # getters
@@ -138,7 +139,8 @@ sub DEFINE {
   my $onHel=shift;
   my $onRel=shift;
 
-  my $idex=$KEYS{$key}*2;
+  my $idex=($KEYS{$key}*2)+1;
+
   $KEYS[$idex]->[1]=($onTap)
     ? $onTap : $KEYS[$idex]->[1];
 
@@ -157,16 +159,30 @@ sub DEFINE {
   my $key=shift;
   HASKEY($key);
 
-  my $idex=$KEYS{$key}*2;
+  my $idex=($KEYS{$key}*2)+1;
 
-  return (
-    $key,
+  return [
 
     $KEYS[$idex]->[1],
     $KEYS[$idex]->[2],
     $KEYS[$idex]->[3],
 
-  );
+  ];
+
+# ---   *   ---   *   ---
+# ^restore saved callbacks
+
+};sub LDDEF {
+
+  my $key=shift;
+  my $calls=shift;
+  HASKEY($key);
+
+  my $idex=($KEYS{$key}*2)+1;
+
+  $KEYS[$idex]->[1]=$calls->[0];
+  $KEYS[$idex]->[2]=$calls->[1];
+  $KEYS[$idex]->[3]=$calls->[2];
 
 };
 
@@ -183,7 +199,7 @@ sub nit {
 };
 
 # ---   *   ---   *   ---
-# load callbacks
+# load defined callbacks
 
 sub ldkeys {
 
@@ -193,6 +209,8 @@ sub ldkeys {
     my @ar=@{$KEYS[$x]}[1..3];
 
     my $i=0;
+
+# ---   *   ---   *   ---
 
     # convert perl subs to closures
     # ie, callable from C
@@ -220,13 +238,14 @@ package lycon::dpy;
 # ---   *   ---   *   ---
 
 sub beg {
-  print "\e[0m\e[1J\e[1;1H\e[?25h";
+  print "\e[0m\e[2J\e[0H\e[?25l";
   STDOUT->flush();
 
 };
 
 sub end {
-  #print "\e[?25l\e[1J\e[1;1H"
+  print "\e[0m\e[2J\e[0H\e[?25h";
+  STDOUT->flush();
 
 };
 
@@ -236,51 +255,90 @@ package lycon::loop;
   use strict;
   use warnings;
 
+  # lame fwd decl
+  my %LOOP=();
+
+# ---   *   ---   *   ---
+# shorthands
+
+sub ALWAYS {return 1;};
+sub NEVER {return 0;};
+
+# ---   *   ---   *   ---
+# flush out the draw buffer as-is
+sub ascii {
+
+  printf $LOOP{-DRAW_BUFF};
+  STDOUT->flush();
+
+  $LOOP{-DRAW_BUFF}='';
+
+};
+
 # ---   *   ---   *   ---
 # global state
 
-my %LOOP=(
+%LOOP=(
 
-  -DRAW_PROC=>sub {return '';},
-  -LOGI_PROC=>sub {;},
-  -QUIT_PROC=>sub {return 0;},
 
-  -DRAW_UPDATE=> sub {return 1;},
+  -LOGI_PROC=>\&lycon::nope,
+  -LOGI_ARGS=>[],
+
+  -QUIT_PROC=>\&NEVER,
+
+  -DRAW_PROC=>\&ascii,
+  -DRAW_BUFF=>'',
+
+  -BUSY=>0,
 
 );
 
 # ---   *   ---   *   ---
 # getters
 
-sub logic {return $LOOP{-LOGI_PROC}->();};
+sub logic {
+  return $LOOP{-LOGI_PROC}->(
+    @{$LOOP{-LOGI_ARGS}}
+
+  );
+};
 
 sub quit {return $LOOP{-QUIT_PROC}->();};
 sub draw {return $LOOP{-DRAW_PROC}->();};
-sub draw_update {return $LOOP{-DRAW_UPDATE}->();};
+
+sub draw_update {
+  return 0<length $LOOP{-DRAW_BUFF};
+
+};sub dwbuff {$LOOP{-DRAW_BUFF}.=shift;};
 
 # ---   *   ---   *   ---
 # setters
 
-sub set_logic {$LOOP{-LOGI_PROC}=shift;};
+sub set_logic {
+  $LOOP{-LOGI_PROC}=shift;
+  $LOOP{-LOGI_ARGS}=shift;
+
+};
+
 sub set_quit {$LOOP{-QUIT_PROC}=shift;};
 sub set_draw {$LOOP{-DRAW_PROC}=shift;};
-sub set_draw_update {$LOOP{-DRAW_UPDATE}=shift;};
+sub busy {return avt::getset(\%LOOP,-BUSY,shift);};
 
 # ---   *   ---   *   ---
 # execute the main loop
 
 sub run {
 
-  while(!quit()) {
+  while(!quit) {
 
-    my $busy=lycon::gtevcnt();
+    busy(lycon::gtevcnt());
 
     if(draw_update) {
-      print "\e[1;1H".(draw)
+      (draw);
 
     };
 
-    lycon::tick($busy);
+    lycon::tick(busy);
 
     lycon::keyrd();
     lycon::keychk();
@@ -288,6 +346,43 @@ sub run {
     (logic);
 
   };
+
+};
+
+# ---   *   ---   *   ---
+
+package lycon::ctl;
+  use strict;
+  use warnings;
+
+my %CTL=(
+  -STACK=>[],
+
+);sub STACK {return $CTL{-STACK};};
+
+sub switch {
+
+  my $logic=shift;
+  my $args=shift;
+  my $draw=shift;
+
+  push @{STACK()},
+    $LOOP{-LOGI_PROC},
+    $LOOP{-LOGI_ARGS};
+
+  push @{STACK()},$LOOP{-DRAW_PROC};
+
+  lycon::loop::set_logic($logic);
+  lycon::loop::set_draw($draw);
+
+};sub ret {
+
+  my $draw=pop @{STACK()};
+  my $args=pop @{STACK()};
+  my $logic=pop @{STACK()};
+
+  lycon::loop::set_logic($logic,$args);
+  lycon::loop::set_draw($draw);
 
 };
 
