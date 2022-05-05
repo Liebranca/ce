@@ -228,10 +228,10 @@ sub pl_keymap {
 
   my $non_ti=shift;
 
-  $non_ti=(!(defined $non_ti))
-    ? length(keys %$href)
-    : $non_ti
-    ;
+#  $non_ti=(!defined $non_ti)
+#    ? length(keys %$href)
+#    : $non_ti
+#    ;
 
   process_keymap($aref,'');
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
@@ -254,7 +254,6 @@ sub pl_keymap {
         ) {
 
           $ev=eval("sub {$ev;};");
-printf "$ev\n";
 
         };
       };
@@ -296,7 +295,7 @@ printf "$ev\n";
 
     (join '',@keylay),
     $#used_keys+1,
-    $non_ti
+    $CACHE{-NON_TI}
 
   );
 
