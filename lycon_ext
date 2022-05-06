@@ -14,6 +14,18 @@
 # ---   *   ---   *   ---
 
 sub nope {;};
+
+sub FATAL {
+
+  lycon::dpy::end();
+
+  my $fmat=shift;
+  printf $fmat."\r\n",@_;
+
+  exit;
+
+};
+
 1; # ret
 
 package lycon::clk;
@@ -94,21 +106,58 @@ package lycon::kbd;
 
 my @KEYS=();
 my %KEYS=();
+
 my @SWKEYS=();
+my %KEYIDS=();
 
 # ---   *   ---   *   ---
-# getters
+# errmesses
 
-sub HASKEY {
+  use constant {
 
-  my $key=shift;
-
-  if(!exists $KEYS{$key}) {
-    printf "No key $key was registered at nit\n";
-    return;
+    E_NOKEY=>"%s <%s> is not bound",
+    E_YESKEY=>"%s <%s> is already bound",
 
   };
+
+# ---   *   ---   *   ---
+# errchk
+
+;;my $ERRME_PROTO=<<";;EOF";
+
+sub %s {
+
+  my \$key=shift;
+  my \$inv=shift;
+
+  my \$h=%s;
+  my \$type=%s;
+
+  my \$has=exists \$h->{\$key};
+
+  if(!\$has && \$inv) {
+    lycon::FATAL(E_NOKEY,\$type,\$key);
+
+  } elsif(\$has && !\$inv) {
+    lycon::FATAL(E_YESKEY,\$type,\$key);
+
+  };
+
 };
+;;EOF
+
+# ---   *   ---   *   ---
+# generate error checks
+
+;;eval(
+  sprintf $ERRME_PROTO,
+  'HASKEY','\%KEYS','Key'
+
+);eval(
+  sprintf $ERRME_PROTO,
+  'HASID','\%KEYIDS','KeyID'
+
+);
 
 # ---   *   ---   *   ---
 # in: user-given name,keylay name,code reference
@@ -118,6 +167,11 @@ sub DEFINE {
 
   my $key=shift;
   my $id=shift;
+
+  HASKEY($key,0);
+  HASID($id,0);
+
+  $KEYIDS{$id}=$key;
 
   my $onTap=shift;
   my $onHel=shift;
@@ -133,7 +187,7 @@ sub DEFINE {
 };sub REDEF {
 
   my $key=shift;
-  HASKEY($key);
+  HASKEY($key,1);
 
   my $onTap=shift;
   my $onHel=shift;
@@ -151,13 +205,40 @@ sub DEFINE {
     ? $onRel : $KEYS[$idex]->[3];
 
 # ---   *   ---   *   ---
+# get access by internal ID
+
+};sub KEY_BY_ID {
+
+  my $id=shift;
+  HASID($id,1);
+
+  my $key=$KEYIDS{$id};
+
+  return $key;
+
+# ---   *   ---   *   ---
+# ^save and redef by internal ID
+
+};sub SV_BY_ID {
+
+  my $id=shift;
+  my $key=KEY_BY_ID($id);
+
+  my $calls=SVDEF($key);
+  REDEF($key,@_);
+
+  return [$key,$calls];
+
+};
+
+# ---   *   ---   *   ---
 # in: user-given name
 # store callbacks on this key
 
-};sub SVDEF {
+sub SVDEF {
 
   my $key=shift;
-  HASKEY($key);
+  HASKEY($key,1);
 
   my $idex=($KEYS{$key}*2)+1;
 
@@ -176,7 +257,7 @@ sub DEFINE {
 
   my $key=shift;
   my $calls=shift;
-  HASKEY($key);
+  HASKEY($key,1);
 
   my $idex=($KEYS{$key}*2)+1;
 
@@ -192,8 +273,24 @@ sub DEFINE {
 sub nit {
 
   %KEYS=@KEYS;
+
+  # check that reserved keys are mapped
+  my $chk=lycon::ctl::ALL_USED_KEYS();
+  for my $id(keys %$chk) {
+
+    my $key=$chk->{$id};
+
+    # set blank callbacks if reserved && unused
+    if(!exists $KEYIDS{$id}) {
+      DEFINE($key,$id,'','','');
+
+    };
+
+  # now register the events
+  };%KEYS=@KEYS;
   lycon::keynt(genks::pl_keymap(\@KEYS,\%KEYS));
 
+  # load callbacks
   ldkeys();
 
 };
@@ -266,6 +363,7 @@ sub NEVER {return 0;};
 
 # ---   *   ---   *   ---
 # flush out the draw buffer as-is
+
 sub ascii {
 
   printf $LOOP{-DRAW_BUFF};
@@ -355,10 +453,120 @@ package lycon::ctl;
   use strict;
   use warnings;
 
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use lang;
+  use queue;
+
+
 my %CTL=(
+
   -STACK=>[],
 
+  -COMMOPS=>{
+
+    -EXIT=>['escape'],
+    -ACCEPT=>['ret'],
+    -ACCEL=>['space'],
+
+    -MOV_A=>['up','down','right','left'],
+    -MOV_B=>['w','a','s','d'],
+    -MOV_C=>['i','k','j','l'],
+
+  },
+
+  -MODULES=>{},
+
 );sub STACK {return $CTL{-STACK};};
+;;sub MODULES {return $CTL{-MODULES};};
+
+# ---   *   ---   *   ---
+# register a module that depends on lycon
+
+;;sub REGISTER {
+
+  my $module=caller;
+  my @keys=@_;
+
+  # avoid initializing twice!
+  if(exists MODULES->{$module}) {return;};
+
+  # initialize
+  my $ref=MODULES->{$module}={
+
+    -KBD=>{},
+    -QUEUE=>queue::nit(),
+
+  };
+
+# ---   *   ---   *   ---
+# iter: get set of callbacks for
+# each key reserved by module
+
+  while(@keys) {
+    my $key=shift @keys;
+    my $calls=shift @keys;
+
+    for my $call(@$calls) {
+      if(!lang::is_code($call)) {
+        $call=\&lycon::nope;
+
+      };
+    };
+
+    $ref->{-KBD}->{$key}=$calls;
+  };
+
+# ---   *   ---   *   ---
+# ^ get keys used by module
+
+};sub USED_KEYS {
+
+  my $module=shift;
+  if(!defined $module) {
+    $module=caller;
+
+  };
+
+  my $keys=MODULES->{$module}->{-KBD};
+
+  my @ids=();
+  for my $key(keys %$keys) {
+    push @ids,@{$CTL{-COMMOPS}->{$key}};
+
+  };
+
+  return \@ids;
+
+# ---   *   ---   *   ---
+# ^ get all keys used by ALL modules
+
+};sub ALL_USED_KEYS {
+
+  my $ref=MODULES;
+  my %keys=();
+
+  for my $module(keys %$ref) {
+
+    my $ids=USED_KEYS($module);
+    for my $id(@$ids) {
+      $keys{$id}="-".(uc $id);
+
+    };
+
+  };return \%keys;
+};
+
+# ---   *   ---   *   ---
+
+sub get_module_queue {
+
+  my $module=caller;
+  return MODULES->{$module}->{-QUEUE};
+
+};
+
+# ---   *   ---   *   ---
 
 sub switch {
 
@@ -383,6 +591,71 @@ sub switch {
 
   lycon::loop::set_logic($logic,$args);
   lycon::loop::set_draw($draw);
+
+};
+
+# ---   *   ---   *   ---
+# transfers control from one module to another
+
+sub transfer {
+
+  my $module=caller;
+
+  my $keys=MODULES->{$module}->{-KBD};
+  my $queue=MODULES->{$module}->{-QUEUE};
+
+  my @saved_k_data=();
+
+  for my $key(keys %$keys) {
+
+    my $ids=$CTL{-COMMOPS}->{$key};
+    my $calls=$keys->{$key};
+
+    my $i=0;
+
+# ---   *   ---   *   ---
+
+    for my $id(@$ids) {
+      my $k_data=lycon::kbd::SV_BY_ID($id);
+      my @calls=(@$calls)[$i..$i+2];
+
+      $i+=3;
+
+      lycon::kbd::REDEF(
+        $k_data->[0],
+        $k_data->[1],
+
+        @calls
+
+      );push @saved_k_data,$k_data;
+    };
+
+# ---   *   ---   *   ---
+
+  };lycon::kbd::ldkeys();
+
+  # TODO: pass draw,logic && logic_args
+  # for each registered module
+
+  switch(
+
+    sub {
+
+      if($queue->pending) {
+        $queue->ex;
+
+      } else {
+
+        ret;for my $k_data(@saved_k_data) {
+          lycon::kbd::LDDEF(@$k_data);
+
+        };
+
+      };
+
+    },[],\&lycon::loop::ascii,
+
+  );
 
 };
 
