@@ -366,7 +366,7 @@ sub NEVER {return 0;};
 
 sub ascii {
 
-  printf $LOOP{-DRAW_BUFF};
+  print $LOOP{-DRAW_BUFF};
   STDOUT->flush();
 
   $LOOP{-DRAW_BUFF}='';
@@ -623,8 +623,6 @@ sub transfer {
 
       lycon::kbd::REDEF(
         $k_data->[0],
-        $k_data->[1],
-
         @calls
 
       );push @saved_k_data,$k_data;
