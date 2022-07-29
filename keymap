@@ -13,23 +13,35 @@
 # ---   *   ---   *   ---
 # deps
 
+  use v5.36.0;
   use strict;
   use warnings;
 
   use lib $ENV{'ARPATH'}.'/lib/';
-  use avt;
+
+  use arstd;
+
+  use emit::std;
+  use emit::c;
 
   use lib $ENV{'ARPATH'}.'/ce/';
   use genks;
 
-  my $root=avt::root $ENV{'ARPATH'};chdir $root;
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION=v0.00.2;
+  our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
 # base table
 
   # 'key_name'=>[keycode_name,onTap,onHel,onRel]
 
-  my @KEYMAP=(
+  genks::process_keymap(
+
+    # keychars file
+    'ce/keys/ti',
 
     # quick exit for testing
     'ESC' ,['escape','','','dpycl();exit(0);'],
@@ -40,33 +52,35 @@
     'LSHIFT',['LShift','','',''],
 
     # movement keys
-    'AUP' ,['up','./ce/keys/up.k'],
-    'ADWN',['down','./ce/keys/down.k'],
-    'ARGT',['right','./ce/keys/right.k'],
-    'ALFT',['left','./ce/keys/left.k'],
-    'ERET',["ret",'./ce/keys/ret.k'],
+    'AUP' ,['up','ce/keys/up.k'],
+    'ADWN',['down','ce/keys/down.k'],
+    'ARGT',['right','ce/keys/right.k'],
+    'ALFT',['left','ce/keys/left.k'],
+    'ERET',["ret",'ce/keys/ret.k'],
 
-  );genks::process_keymap(\@KEYMAP,'./ce/keys/ti');
+  );
 
 # ---   *   ---   *   ---
 
-avt::wrcboil_h(
-  '/ce/',
-  'keymap',
-  'IBN-3DILA',
+emit::std::outf(
 
-  \&genks::keymap_generator,[]
+  'ce/keymap.h',
+  \&emit::c::codewrap,
+
+  body=>\&genks::keymap_generator,
+  add_guards=>1,
 
 );
 
 # ---   *   ---   *   ---
 
-avt::wrcboil_h(
-  '/ce/',
-  'keycalls',
-  'IBN-3DILA',
+emit::std::outf(
 
-  \&genks::keycalls_generator,[]
+  'ce/keycalls.h',
+  \&emit::c::codewrap,
+
+  body=>\&genks::keycalls_generator,
+  add_guards=>1,
 
 );
 

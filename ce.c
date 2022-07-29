@@ -117,7 +117,7 @@ void main(int argc,char** argv) {
   // open display
   dpynt(STDOUT_FILENO);
 
-  // open input handler  
+  // open input handler
   if(KEYNT(STDIN_FILENO)) {
     fprintf(stderr,"Aborted\n");
     exit(-1);

@@ -12,18 +12,28 @@
 # ---   *   ---   *   ---
 
 # deps
+  use v5.36.0;
   use strict;
   use warnings;
 
-  use lib $ENV{'ARPATH'}.'/avtomat/';
-  use avt;
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use emit::std;
+  use emit::c;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION=v0.00.2;
+  our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
 
-sub generator {
+sub generator($fname) {
 
-  my $FH=shift;
-  print $FH "wchar_t chartab[]=\n  ";
+  print {*STDERR} "$fname\n";
+
+  my $s="wchar_t chartab[]=\n  ";
 
   for(my $i=0;$i<256;$i++) {
 
@@ -33,26 +43,37 @@ sub generator {
       ;
 
     my $h=sprintf "%04X",$c;
+
     if(!($i%4)) {
-      if($i) {print $FH "\"\n  ";};
-      print $FH 'L"';
+      if($i) {$s.="\"\n  "};
+      $s.='L"';
 
-    };print $FH "\\x$h";
+    };
 
-  };print $FH "\"\n;\n";
+    $s.="\\x$h";
+
+  };
+
+# ---   *   ---   *   ---
+
+  return $s.q{"};
 
 };
 
 # ---   *   ---   *   ---
 
-my $root=avt::root $ENV{'ARPATH'};chdir $root;
+#my $root=shb7::root $ENV{'ARPATH'};
+#chdir $root;
 
-avt::wrcboil_h(
-  '/ce/',
-  'chartab',
-  'IBN-3DILA',
+emit::std::outf(
 
-  \&generator,[]
+  'ce/chartab.h',
+  \&emit::c::codewrap,
+
+  body=>\&generator,
+  args=>[],
+
+  add_guards=>1,
 
 );
 

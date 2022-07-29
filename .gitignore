@@ -1,5 +1,6 @@
 # these files are generated
 avto
+.avto-cache
 chartab.h
 keymap.h
 keycalls.h

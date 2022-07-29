@@ -15,13 +15,25 @@
 # deps
 package genks;
 
+  use v5.36.0;
   use strict;
   use warnings;
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
+  use style;
+  use arstd;
+  use shb7;
+
+  use emit::c;
+
   use lang;
-  use avt;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION=v0.02.1;
+  our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
 # global storage
@@ -77,18 +89,14 @@ sub KI {
 };
 
 # ---   *   ---   *   ---
-
 # parse *.k file into a list
+
 sub rdkfile {
 
   my $fpath=shift;
   my $pl_keys=shift;
 
-  if(!(-e $fpath)) {
-    print "Can't find $fpath";
-    exit;
-
-  };my $s=`cat $fpath`;
+  my $s=arstd::orc($fpath);
   my $tap=(split "onTap\n",$s)[1];
   $tap=(split "onHel\n",$tap)[0];
 
@@ -100,7 +108,9 @@ sub rdkfile {
   for my $ev ($tap,$hel,$rel) {
     if((index $ev,'None')>-1) {$ev='';};
 
-  };return ($tap,$hel,$rel);
+  };
+
+  return ($tap,$hel,$rel);
 
 };
 
@@ -141,7 +151,7 @@ sub rdti {
   my $tifile=shift;
   if(!$tifile) {return ();};
 
-  my @table=split "\n",`cat $tifile`;
+  my @table=split "\n",arstd::orc($tifile);
   my @map=();
 
   while(@table) {
@@ -178,10 +188,9 @@ sub rdti {
 
 # in: keymap array,file to text-input defs
 # reads user-defined keymap
-sub process_keymap {
+sub process_keymap($tifile,@KEYMAP) {
 
-  my @KEYMAP=@{ $_[0] };shift;
-  my $tifile=shift;
+  $tifile=shb7::file($tifile);
 
 # ---   *   ---   *   ---
 
@@ -192,10 +201,12 @@ sub process_keymap {
     my $ar=$KEYMAP[$i+1];
     $ar->[0]=KI($ar->[0]);
 
+    my $f=shb7::file($ar->[1]);
+
     # read callbacks from file
-    if(-e $ar->[1]) {
-      my $kfile=pop @$ar;
-      push @$ar,rdkfile($kfile);
+    if(-f $f) {
+      pop @$ar;
+      push @$ar,rdkfile($f);
 
     # or just ensure they are not undef
     } else {
@@ -248,7 +259,7 @@ sub pl_keymap {
       my @evs=@{$KEYMAP[$i]}[1..3];
       for my $ev(@evs) {
 
-        if(!lang::is_code($ev)
+        if(!lang::is_coderef($ev)
         && length $ev
 
         ) {
@@ -303,74 +314,62 @@ sub pl_keymap {
 
 # ---   *   ---   *   ---
 
-sub keymap_generator {
+sub keymap_generator($fname) {
 
-  my $FH=shift;
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
 
-  my @lists=();{
+  my %lists=(
 
-    my $item;
+    KEYMAP=>['static char',[]],
+    K_COUNT=>['enum',[]],
 
-    # KEYMAP[key_name]==scancode
-    # we don't use this, nice to have maybe?
-    $item=avt::clist([0,'arr:char','KEYMAP','']);
+    KEYLAY=>['static char',[]],
 
-    push @lists,$item;
-
-    $item=avt::clist([0,'enum:K_COUNT','','']);
-    push @lists,$item;
-
-  };
+  );
 
 # ---   *   ---   *   ---
 # layout -> keymap lookup table
 
-  my $CODE_TO_KEY='';{
+  # get (used_indices:used_values)
+  my @used_keys=();{
+    for(my $i=1;$i<@KEYMAP;$i+=2) {
+      push @used_keys,$KEYMAP[$i]->[0];
 
-    # get (used_indices:used_values)
-    my @used_keys=();{
-      for(my $i=1;$i<@KEYMAP;$i+=2) {
-        push @used_keys,$KEYMAP[$i]->[0];
-
-      };
-    };my $list=avt::clist(
-      [0,'arr:char','KEYLAY','']
-
-    );
-
-# ---   *   ---   *   ---
-
-    # match layout indices to used ones
-    my @lay=@{ $CACHE{-LAYOUT_I} };
-    my $i=0;while(@lay) {
-      my $kname=shift @lay;
-      my $kcode=KI($kname);
-
-      $list->[2]=0;
-
-      # cant think of a smart way to do it
-      for(my $j=0;$j<@used_keys;$j++) {
-
-        if($used_keys[$j]==$kcode) {
-          $list->[2]=$j+1;last;
-
-        };
-      };
-
-      $list=avt::clist($list);
-
-    };$list->[0]++;
-
-    $list=avt::clist($list);
-    $CODE_TO_KEY=$list->[3];
+    };
 
   };
 
 # ---   *   ---   *   ---
+# match layout indices to used ones
 
-  # iter through the map
+  my @lay=@{ $CACHE{-LAYOUT_I} };
+  my $items=$lists{KEYLAY}->[1];
+
+  while(@lay) {
+
+    my $kname=shift @lay;
+    my $kcode=KI($kname);
+
+    push @$items,0;
+
+    # cant think of a smart way to do it
+    for(my $j=0;$j<@used_keys;$j++) {
+
+      if($used_keys[$j]==$kcode) {
+        $items->[-1]=$j+1;
+        last;
+
+      };
+
+    };
+
+  };
+
+# ---   *   ---   *   ---
+# iter through the map
+
   for(my $i=0;$i<@KEYMAP;$i+=2) {
+
     my $name=$KEYMAP[$i+0];
     my $data=$KEYMAP[$i+1];
 
@@ -384,59 +383,60 @@ sub keymap_generator {
     )=@{ $data };
 
 # ---   *   ---   *   ---
+# populate lists
 
-    # populate lists
-    { my @items=($kcode,"K_$name");
-      for(my $j=0;$j<@lists;$j++) {
-        $lists[$j]->[2]=$items[$j];
-        $lists[$j]=avt::clist($lists[$j]);
+    $items=$lists{KEYMAP}->[1];
+    push @$items,$kcode;
 
-      };
-    };
+    $items=$lists{K_COUNT}->[1];
+    push @$items,"K_$name";
 
   };
 
 # ---   *   ---   *   ---
 
-  my $result=''.
-    "#define NON_TI $CACHE{-NON_TI}\n".
-    $CODE_TO_KEY;
+  my $result=q{#define NON_TI }.
+    $CACHE{-NON_TI}."\n";
 
-  # close lists
-  for(my $j=0;$j<@lists;$j++) {
-    $lists[$j]->[0]++;
-    $lists[$j]=avt::clist($lists[$j]);
+  for my $key(qw(KEYMAP K_COUNT KEYLAY)) {
 
-    $result.=$lists[$j]->[3];
+    $result.=emit::c::datasec(
+
+      $key,
+
+      $lists{$key}->[0],
+      @{$lists{$key}->[1]}
+
+    );
 
   };
 
-  # write it all to file
-  print $FH $result;
+  return $result;
 
 };
 
 # ---   *   ---   *   ---
 
 # auxiliary file
-sub keycalls_generator {
+sub keycalls_generator($fname) {
 
-  my $FH=shift;
   my @KEYMAP=@{ $CACHE{-KEYMAP} };
+  my $result=$NULLSTR;
+  my $defs=$NULLSTR;
 
-  my $result='';
-  my $evtable="#ifndef K_FUNCS_LOAD\n".
-    "#define K_FUNCS_LOAD \\\n";
-
-  my $evfuncs=['void:void','','',''];
+  my $keyload_macro="#define K_FUNCS_LOAD \\\n";
 
   # iter through the map
   for(my $i=0;$i<@KEYMAP;$i+=2) {
+
     my $name=$KEYMAP[$i+0];
     my $data=$KEYMAP[$i+1];
 
-    # unpack array reference
+# ---   *   ---   *   ---
+# unpack the key struct
+
     my (
+
       $kcode,
       $onTap,
       $onHel,
@@ -444,46 +444,56 @@ sub keycalls_generator {
 
     )=@{ $data };
 
-# ---   *   ---   *   ---
+    my @helper=(
+      $onTap,'TAP',
+      $onHel,'HEL',
+      $onRel,'REL',
 
-    # go through the code
-    { my @helper=(
-        $onTap,'TAP',
-        $onHel,'HEL',
-        $onRel,'REL',
-
-      );my $j=0;while(@helper) {
-        my $code=shift @helper;
-        my $suff=shift @helper;
-
-        # populate callback arrays
-        my $funcname=(!$code)
-          ? "nope"
-          : "\&K_$suff"."_FUNC_$name"
-          ;
-
-        $evtable.="keycall(K_$name,$j,$funcname);\\\n";
-        $j++;
+    );
 
 # ---   *   ---   *   ---
+# look at each key event
 
-        # skip empty or make definition
-        if(!$code) {next;};
+    my $j=0;
+    while(@helper) {
 
-        $evfuncs->[1]="K_$suff"."_FUNC_$name";
-        $evfuncs->[2]=$code;
+      my $code=shift @helper;
+      my $suff=shift @helper;
 
-        $evfuncs=avt::cfunc($evfuncs);
+      # populate callback arrays
+      my $funcname=(!$code)
+        ? "nope"
+        : "\&K_$suff"."_FUNC_$name"
+        ;
 
+      $keyload_macro.=
+        "keycall(K_$name,".
+        "$j,$funcname);\\\n";
 
-      };
+      $j++;
+
+# ---   *   ---   *   ---
+# skip empty or make definition
+
+      if(!$code) {next};
+
+      $defs.=emit::c::fnwrap(
+        "K_$suff"."_FUNC_$name",
+        $code,
+
+        rtype=>'void',
+        args=>'void',
+
+      );
+
+# ---   *   ---   *   ---
+
     };
   };
 
-# ---   *   ---   *   ---
+  $keyload_macro.="\n#endif\n";
 
-  $result.=( $evfuncs->[3] ).$evtable."\n#endif\n";
-  print $FH $result;
+  return $defs."\n".$keyload_macro;
 
 };
 

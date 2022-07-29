@@ -313,7 +313,7 @@ sub ldkeys {
     # ie, callable from C
     for my $ev(@ar) {
 
-      if(lang::is_code($ev)) {
+      if(lang::is_coderef($ev)) {
         my $cev=lycon::ffi->closure($ev);
         $cev->sticky();
 
@@ -508,7 +508,7 @@ my %CTL=(
     my $calls=shift @keys;
 
     for my $call(@$calls) {
-      if(!lang::is_code($call)) {
+      if(!lang::is_coderef($call)) {
         $call=\&lycon::nope;
 
       };
