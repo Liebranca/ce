@@ -17,15 +17,17 @@
   use strict;
   use warnings;
 
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+
+  use Arstd;
+
   use lib $ENV{'ARPATH'}.'/lib/';
 
-  use arstd;
-
-  use emit::std;
-  use emit::c;
+  use Emit::Std;
+  use Emit::C;
 
   use lib $ENV{'ARPATH'}.'/ce/';
-  use genks;
+  use Genks;
 
 # ---   *   ---   *   ---
 # info
@@ -38,7 +40,7 @@
 
   # 'key_name'=>[keycode_name,onTap,onHel,onRel]
 
-  genks::process_keymap(
+  Genks::process_keymap(
 
     # keychars file
     'ce/keys/ti',
@@ -62,24 +64,22 @@
 
 # ---   *   ---   *   ---
 
-emit::std::outf(
+Emit::Std::outf(
 
-  'ce/keymap.h',
-  \&emit::c::codewrap,
+  'C','ce/keymap.h',
 
-  body=>\&genks::keymap_generator,
+  body=>\&Genks::keymap_generator,
   add_guards=>1,
 
 );
 
 # ---   *   ---   *   ---
 
-emit::std::outf(
+Emit::Std::outf(
 
-  'ce/keycalls.h',
-  \&emit::c::codewrap,
+  'C','ce/keycalls.h',
 
-  body=>\&genks::keycalls_generator,
+  body=>\&Genks::keycalls_generator,
   add_guards=>1,
 
 );

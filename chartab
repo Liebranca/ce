@@ -18,8 +18,8 @@
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
-  use emit::std;
-  use emit::c;
+  use Emit::Std;
+  use Emit::C;
 
 # ---   *   ---   *   ---
 # info
@@ -65,10 +65,9 @@ sub generator($fname) {
 #my $root=shb7::root $ENV{'ARPATH'};
 #chdir $root;
 
-emit::std::outf(
+Emit::Std::outf(
 
-  'ce/chartab.h',
-  \&emit::c::codewrap,
+  'C','ce/chartab.h',
 
   body=>\&generator,
   args=>[],

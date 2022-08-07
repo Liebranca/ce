@@ -13,21 +13,23 @@
 # ---   *   ---   *   ---
 
 # deps
-package genks;
+package Genks;
 
   use v5.36.0;
   use strict;
   use warnings;
 
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+
+  use Style;
+  use Arstd;
+  use Chk;
+
+  use Shb7;
+
   use lib $ENV{'ARPATH'}.'/lib/';
 
-  use style;
-  use arstd;
-  use shb7;
-
-  use emit::c;
-
-  use lang;
+  use Emit::C;
 
 # ---   *   ---   *   ---
 # info
@@ -38,7 +40,7 @@ package genks;
 # ---   *   ---   *   ---
 # global storage
 
-  my %CACHE=(
+  my %Cache=(
     -LAYOUT   => 0,
     -LAYOUT_I => 0,
 
@@ -75,16 +77,16 @@ sub parse_kbdlay {
     $kbdlay{$ar_name}=$i;$i++;
     push @layi,$ar_name;
 
-  };$CACHE{-LAYOUT_I}=\@layi;
+  };$Cache{-LAYOUT_I}=\@layi;
   return \%kbdlay;
 
-};$CACHE{-LAYOUT}=parse_kbdlay();
+};$Cache{-LAYOUT}=parse_kbdlay();
 
 # arg=keyname
 # Key Index, a simple shorthand
 sub KI {
   my $key_name=shift;
-  return $CACHE{-LAYOUT}->{$key_name};
+  return $Cache{-LAYOUT}->{$key_name};
 
 };
 
@@ -96,7 +98,7 @@ sub rdkfile {
   my $fpath=shift;
   my $pl_keys=shift;
 
-  my $s=arstd::orc($fpath);
+  my $s=Arstd::orc($fpath);
   my $tap=(split "onTap\n",$s)[1];
   $tap=(split "onHel\n",$tap)[0];
 
@@ -151,7 +153,7 @@ sub rdti {
   my $tifile=shift;
   if(!$tifile) {return ();};
 
-  my @table=split "\n",arstd::orc($tifile);
+  my @table=split "\n",Arstd::orc($tifile);
   my @map=();
 
   while(@table) {
@@ -190,7 +192,7 @@ sub rdti {
 # reads user-defined keymap
 sub process_keymap($tifile,@KEYMAP) {
 
-  $tifile=shb7::file($tifile);
+  $tifile=Shb7::file($tifile);
 
 # ---   *   ---   *   ---
 
@@ -201,7 +203,7 @@ sub process_keymap($tifile,@KEYMAP) {
     my $ar=$KEYMAP[$i+1];
     $ar->[0]=KI($ar->[0]);
 
-    my $f=shb7::file($ar->[1]);
+    my $f=Shb7::file($ar->[1]);
 
     # read callbacks from file
     if(-f $f) {
@@ -222,11 +224,11 @@ sub process_keymap($tifile,@KEYMAP) {
 # ---   *   ---   *   ---
 
   # save non text-input keycount
-  $CACHE{-NON_TI}=int((@KEYMAP)/2);
+  $Cache{-NON_TI}=int((@KEYMAP)/2);
 
   # read text-input config
   push @KEYMAP,rdti($tifile);
-  $CACHE{-KEYMAP}=\@KEYMAP;
+  $Cache{-KEYMAP}=\@KEYMAP;
 
 };
 
@@ -245,7 +247,7 @@ sub pl_keymap {
 #    ;
 
   process_keymap($aref,'');
-  my @KEYMAP=@{ $CACHE{-KEYMAP} };
+  my @KEYMAP=@{ $Cache{-KEYMAP} };
 
 # ---   *   ---   *   ---
 
@@ -259,7 +261,7 @@ sub pl_keymap {
       my @evs=@{$KEYMAP[$i]}[1..3];
       for my $ev(@evs) {
 
-        if(!lang::is_coderef($ev)
+        if(!is_coderef($ev)
         && length $ev
 
         ) {
@@ -276,7 +278,7 @@ sub pl_keymap {
 
   my @keylay=();
 
-  my @lay=@{ $CACHE{-LAYOUT_I} };
+  my @lay=@{ $Cache{-LAYOUT_I} };
   my $i=0;while(@lay) {
     my $kname=shift @lay;
     my $kcode=KI($kname);
@@ -306,7 +308,7 @@ sub pl_keymap {
 
     (join '',@keylay),
     $#used_keys+1,
-    $CACHE{-NON_TI}
+    $Cache{-NON_TI}
 
   );
 
@@ -316,7 +318,7 @@ sub pl_keymap {
 
 sub keymap_generator($fname) {
 
-  my @KEYMAP=@{ $CACHE{-KEYMAP} };
+  my @KEYMAP=@{ $Cache{-KEYMAP} };
 
   my %lists=(
 
@@ -342,7 +344,7 @@ sub keymap_generator($fname) {
 # ---   *   ---   *   ---
 # match layout indices to used ones
 
-  my @lay=@{ $CACHE{-LAYOUT_I} };
+  my @lay=@{ $Cache{-LAYOUT_I} };
   my $items=$lists{KEYLAY}->[1];
 
   while(@lay) {
@@ -396,11 +398,11 @@ sub keymap_generator($fname) {
 # ---   *   ---   *   ---
 
   my $result=q{#define NON_TI }.
-    $CACHE{-NON_TI}."\n";
+    $Cache{-NON_TI}."\n";
 
   for my $key(qw(KEYMAP K_COUNT KEYLAY)) {
 
-    $result.=emit::c::datasec(
+    $result.=Emit::C::datasec(
 
       $key,
 
@@ -420,7 +422,7 @@ sub keymap_generator($fname) {
 # auxiliary file
 sub keycalls_generator($fname) {
 
-  my @KEYMAP=@{ $CACHE{-KEYMAP} };
+  my @KEYMAP=@{ $Cache{-KEYMAP} };
   my $result=$NULLSTR;
   my $defs=$NULLSTR;
 
@@ -477,7 +479,7 @@ sub keycalls_generator($fname) {
 
       if(!$code) {next};
 
-      $defs.=emit::c::fnwrap(
+      $defs.=Emit::C::fnwrap(
         "K_$suff"."_FUNC_$name",
         $code,
 
@@ -491,8 +493,7 @@ sub keycalls_generator($fname) {
     };
   };
 
-  $keyload_macro.="\n#endif\n";
-
+  $keyload_macro.="\n";
   return $defs."\n".$keyload_macro;
 
 };

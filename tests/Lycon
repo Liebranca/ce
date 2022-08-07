@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+#
+# Tests the Lycon controllers
+#
+# ---   *   ---   *   ---
+
+# deps
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/ce/';
+
+  use Lycon;
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use Style;
+  use Arstd;
+
+# ---   *   ---   *   ---
+
+
+
+# ---   *   ---   *   ---
+1; # ret
