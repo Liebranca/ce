@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 # ---   *   ---   *   ---
 # LYCON CONTROL
-# Handles control switches
+# Marks other modules for
+# control switches
 #
 # LIBRE SOFTWARE
 # Licensed under GNU GPL3
@@ -38,9 +39,9 @@ package Lycon::Ctl;
       -ACCEPT=>['ret'],
       -JUMP=>['space'],
 
-      -MOV_A=>['up','down','right','left'],
+      -MOV_A=>['up','left','down','right'],
       -MOV_B=>['w','a','s','d'],
-      -MOV_C=>['i','k','j','l'],
+      -MOV_C=>['i','j','k','l'],
 
     ],
 
@@ -61,8 +62,6 @@ sub import {
   # do not register Lycon modules themselves
   if(($pkg=~ $is_lycon_mod)
   || exists $Cache->{modules}->{$pkg}) {return};
-
-  say "Ctl\->import $pkg";
 
   # initialize
   my $ref=$Cache->{modules}->{$pkg}={

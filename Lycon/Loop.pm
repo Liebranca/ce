@@ -73,7 +73,11 @@ sub ascii {
 # ---   *   ---   *   ---
 # appends to draw buffer
 
-sub dwbuff($s) {$s//=$NULLSTR;$Cache->{draw_buff}.=$s};
+sub dwbuff($s) {
+  $s//=$NULLSTR;
+  $Cache->{draw_buff}.=$s
+
+};
 
 # ---   *   ---   *   ---
 # setters
@@ -143,7 +147,7 @@ sub switch($logic,$args,$draw) {
 
   push @{$Cache->{stack}},get_state();
 
-  set_logic($logic);
+  set_logic($logic,$args);
   set_draw($draw);
 
 };
@@ -168,54 +172,10 @@ sub ret() {
 sub transfer() {
 
   my $pkg=caller;
+  my @saved_k_data=Lycon::Kbd::swap_to($pkg);
+
   my $modules=$Lycon::Ctl::Cache->{modules};
-
-  my @keys=Arstd::array_keys(
-    $modules->{$pkg}->{kbd}
-
-  );
-
-  my @values=Arstd::array_values(
-    $modules->{$pkg}->{kbd}
-
-  );
-
   my $queue=$modules->{$pkg}->{queue};
-
-# ---   *   ---   *   ---
-
-  my @saved_k_data=();
-
-  while(@keys && @values) {
-
-    my $ids=shift @keys;
-    my $calls=shift @values;
-
-    my $i=0;
-
-# ---   *   ---   *   ---
-
-    for my $id(@$ids) {
-      my $k_data=Lycon::Kbd::sv_by_id($id);
-      my @calls=(@$calls)[$i..$i+2];
-
-      $i+=3;
-
-      Lycon::Kbd::redef(
-        $k_data->[0],
-        @calls
-
-      );
-
-      push @saved_k_data,$k_data;
-
-    };
-
-# ---   *   ---   *   ---
-
-  };
-
-  Lycon::Kbd::ldkeys();
 
   # TODO: pass draw,logic && logic_args
   # for each registered module

@@ -140,13 +140,13 @@ sub redef(
 
   my $idex=($Keys{$key}*2)+1;
 
-  $Keys[$idex]->[1]=($onTap)
+  $Keys[$idex]->[1]=(defined $onTap)
     ? $onTap : $Keys[$idex]->[1];
 
-  $Keys[$idex]->[2]=($onHel)
+  $Keys[$idex]->[2]=(defined $onHel)
     ? $onHel : $Keys[$idex]->[2];
 
-  $Keys[$idex]->[3]=($onRel)
+  $Keys[$idex]->[3]=(defined $onRel)
     ? $onRel : $Keys[$idex]->[3];
 
 };
@@ -240,7 +240,11 @@ sub nit() {
 
         define(
 
-          $key,$id,@$key
+          $key,$id,
+
+          $NULLSTR,
+          $NULLSTR,
+          $NULLSTR,
 
         );
 
@@ -294,6 +298,54 @@ sub ldkeys() {
     };
 
   };
+
+};
+
+# ---   *   ---   *   ---
+# gives current keyboard definitions and
+# swaps them for a given modules's
+
+sub swap_to($pkg=undef) {
+
+  $pkg//=caller;
+
+  my $modules=$Lycon::Ctl::Cache->{modules};
+
+  my @keys=Arstd::array_keys(
+    $modules->{$pkg}->{kbd}
+
+  );
+
+  my @values=Arstd::array_values(
+    $modules->{$pkg}->{kbd}
+
+  );
+
+# ---   *   ---   *   ---
+
+  my @saved_k_data=();
+
+  while(@keys && @values) {
+
+    my $id=shift @keys;
+    my $calls=shift @values;
+
+    my $k_data=sv_by_id($id);
+
+    redef(
+      $k_data->[0],
+      @$calls
+
+    );
+
+    push @saved_k_data,$k_data;
+
+  };
+
+# ---   *   ---   *   ---
+
+  ldkeys();
+  return @saved_k_data;
 
 };
 

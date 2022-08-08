@@ -4,8 +4,58 @@
 #
 # ---   *   ---   *   ---
 
-# deps
+package not_main;
 
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use Style;
+  use Arstd;
+
+  use Lycon;
+
+  use Lycon::Clk;
+  use Lycon::Ctl;
+  use Lycon::Kbd;
+  use Lycon::Loop;
+
+# ---   *   ---   *   ---
+
+my $Exit_Not_Main=0;
+
+Lycon::Ctl::register_events(
+
+  -JUMP=>[sub {$Exit_Not_Main=1},0,0],
+
+);
+
+my $Q=Lycon::Ctl::get_module_queue();
+
+$Q->add(sub {print "switched to not_main\r\n"});
+
+sub loop_test() {
+  print "inside not_main\r\n";
+  $Q->add(\&loop_test) if !$Exit_Not_Main;
+
+};
+
+$Q->add(\&loop_test);
+
+sub ctl_take() {
+
+  Lycon::Loop::transfer();
+
+};
+
+
+# ---   *   ---   *   ---
+
+# deps
+package main;
   use v5.36.0;
   use strict;
   use warnings;
@@ -28,6 +78,7 @@
 my $Cache={
 
   terminate=>0,
+  init=>0,
 
 };
 
@@ -48,8 +99,18 @@ Lycon::Loop::set_quit(sub {
 
 Lycon::Clk::nit();
 
-# ---   *   ---   *   ---
+Lycon::Loop::set_logic(sub {
 
+  if(!$Cache->{init}) {
+
+    $Cache->{init}=1;
+    not_main::ctl_take();
+
+  };
+
+},[]);
+
+Lycon::Kbd::swap_to();
 Lycon::Loop::run();
 
 # ---   *   ---   *   ---
