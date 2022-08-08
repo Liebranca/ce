@@ -19,12 +19,19 @@ package Lycon::Loop;
   use warnings;
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
+
   use Style;
+  use Arstd;
+
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use Lycon::Kbd;
+  use Lycon::Ctl;
 
 # ---   *   ---   *   ---
 # lame fwd decl
 
-  my %Loop=();
+  my $Cache={};
 
 # ---   *   ---   *   ---
 # shorthands
@@ -37,19 +44,19 @@ sub never {return 0;};
 
 sub ascii {
 
-  print $Loop{draw_buff};
+  print $Cache->{draw_buff};
   STDOUT->flush();
 
-  $Loop{draw_buff}='';
+  $Cache->{draw_buff}='';
 
 };
 
 # ---   *   ---   *   ---
 # global state
 
-  %Loop=(
+  $Cache={
 
-    logic_proc=>\&lycon::nope,
+    logic_proc=>$NOOP,
     logic_args=>[],
 
     quit_proc=>\&never,
@@ -57,26 +64,28 @@ sub ascii {
     draw_proc=>\&ascii,
     draw_buff=>'',
 
+    stack=>[],
+
     busy=>0,
 
-  );
+  };
 
 # ---   *   ---   *   ---
 # appends to draw buffer
 
-sub dwbuff($s) {$s//=$NULLSTR;$Loop{draw_buff}.=$s};
+sub dwbuff($s) {$s//=$NULLSTR;$Cache->{draw_buff}.=$s};
 
 # ---   *   ---   *   ---
 # setters
 
 sub set_logic($proc,$args) {
-  $Loop{logic_proc}=$proc;
-  $Loop{logic_args}=$args;
+  $Cache->{logic_proc}=$proc;
+  $Cache->{logic_args}=$args;
 
 };
 
-sub set_quit($proc) {$Loop{quit_proc}=$proc};
-sub set_draw($proc) {$Loop{draw_proc}=$proc};
+sub set_quit($proc) {$Cache->{quit_proc}=$proc};
+sub set_draw($proc) {$Cache->{draw_proc}=$proc};
 
 # ---   *   ---   *   ---
 # gets functions currently used
@@ -85,9 +94,9 @@ sub get_state() {
 
   return (
 
-    $Loop{logic_proc},
-    $Loop{logic_args},
-    $Loop{draw_proc};
+    $Cache->{logic_proc},
+    $Cache->{logic_args},
+    $Cache->{draw_proc},
 
   );
 
@@ -98,28 +107,144 @@ sub get_state() {
 
 sub run() {
 
-  while(!$Loop{quit_proc}->()) {
+  my $panic=60;
+  while(!$Cache->{quit_proc}->()) {
 
-    $Loop{busy}=Lycon::gtevcnt();
+    $Cache->{busy}=Lycon::gtevcnt();
 
     # draw on update
-    if(0<length $Loop{draw_buff}) {
-      $Loop{draw_proc}->()
+    if(0<length $Cache->{draw_buff}) {
+      $Cache->{draw_proc}->()
 
     };
 
-    Lycon::tick($Loop{busy});
+    Lycon::tick($Cache->{busy});
 
     Lycon::keyrd();
     Lycon::keychk();
 
     # run logic
-    $Loop{logic_proc}->(
-      @{$Loop{logic_args}}
+    $Cache->{logic_proc}->(
+      @{$Cache->{logic_args}}
 
     );
 
+    $panic--;
+    if(!$panic) {last};
+
   };
+
+};
+
+# ---   *   ---   *   ---
+# modifies main loop
+
+sub switch($logic,$args,$draw) {
+
+  push @{$Cache->{stack}},get_state();
+
+  set_logic($logic);
+  set_draw($draw);
+
+};
+
+# ---   *   ---   *   ---
+# ^restores previous
+
+sub ret() {
+
+  my $draw=pop @{$Cache->{stack}};
+  my $args=pop @{$Cache->{stack}};
+  my $logic=pop @{$Cache->{stack}};
+
+  set_logic($logic,$args);
+  set_draw($draw);
+
+};
+
+# ---   *   ---   *   ---
+# transfers control from one module to another
+
+sub transfer() {
+
+  my $pkg=caller;
+  my $modules=$Lycon::Ctl::Cache->{modules};
+
+  my @keys=Arstd::array_keys(
+    $modules->{$pkg}->{kbd}
+
+  );
+
+  my @values=Arstd::array_values(
+    $modules->{$pkg}->{kbd}
+
+  );
+
+  my $queue=$modules->{$pkg}->{queue};
+
+# ---   *   ---   *   ---
+
+  my @saved_k_data=();
+
+  while(@keys && @values) {
+
+    my $ids=shift @keys;
+    my $calls=shift @values;
+
+    my $i=0;
+
+# ---   *   ---   *   ---
+
+    for my $id(@$ids) {
+      my $k_data=Lycon::Kbd::sv_by_id($id);
+      my @calls=(@$calls)[$i..$i+2];
+
+      $i+=3;
+
+      Lycon::Kbd::redef(
+        $k_data->[0],
+        @calls
+
+      );
+
+      push @saved_k_data,$k_data;
+
+    };
+
+# ---   *   ---   *   ---
+
+  };
+
+  Lycon::Kbd::ldkeys();
+
+  # TODO: pass draw,logic && logic_args
+  # for each registered module
+
+  switch(
+
+    sub {
+
+      # execute pending operations
+      if($queue->pending()) {
+        $queue->ex();
+
+      # restore previous state
+      } else {
+
+        ret();
+
+        for my $k_data(@saved_k_data) {
+          Lycon::Kbd::lddef(@$k_data);
+
+        };
+
+      };
+
+    },
+
+    [],\&Lycon::Loop::ascii,
+
+  );
 
 };
 

@@ -19,6 +19,7 @@ package Lycon::Kbd;
   use strict;
   use warnings;
 
+  use English qw(-no_match_vars);
   use Readonly;
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
@@ -29,6 +30,7 @@ package Lycon::Kbd;
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
+  use Lycon::Ctl;
   use Genks;
 
 # ---   *   ---   *   ---
@@ -217,29 +219,32 @@ sub nit() {
 
   %Keys=@Keys;
 
-  # check that reserved keys are mapped
-  my $chk=Lycon::Ctl::all_used_keys();
+  # fetch modules requesting keyboard access
+  my $Ctl_Cache=$Lycon::Ctl::Cache;
+  my $modules=$Ctl_Cache->{modules};
 
-  my @ids=Arstd::array_keys($chk);
-  my @keys=Arstd::array_values($chk);
+  # ^get keydata for all
+  for my $mod(values %{$modules}) {
 
-  while(@ids && @keys) {
+    my @ids=Arstd::array_keys($mod->{kbd});
+    my @keys=Arstd::array_values($mod->{kbd});
 
-    my $id=shift @ids;
-    my $key=shift @keys;
+    # check that reserved keys are mapped
+    while(@ids && @keys) {
 
-    # set blank callbacks if reserved && unused
-    if(!exists $KeyIDs{$id}) {
+      my $id=shift @ids;
+      my $key=shift @keys;
 
-      define(
+      # set blank callbacks if reserved && unused
+      if(!exists $KeyIDs{$id}) {
 
-        $key,$id,
+        define(
 
-        $NULLSTR,
-        $NULLSTR,
-        $NULLSTR
+          $key,$id,@$key
 
-      );
+        );
+
+      };
 
     };
 
@@ -249,7 +254,9 @@ sub nit() {
 # register the events
 
   %Keys=@Keys;
-  Lycon::keynt(Genks::pl_keymap(\@Keys,\%Keys));
+  my @ntargs=Genks::pl_keymap(\@Keys,\%Keys);
+
+  Lycon::keynt(@ntargs);
 
   # load callbacks
   ldkeys();
@@ -275,7 +282,7 @@ sub ldkeys() {
     for my $ev(@ar) {
 
       if(is_coderef($ev)) {
-        my $cev=Lycon::FFI_Instance->closure($ev);
+        my $cev=$Lycon::FFI_Instance->closure($ev);
         $cev->sticky();
 
         Lycon::keycall($Keys{$name},$i,$cev);

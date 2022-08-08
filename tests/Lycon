@@ -10,19 +10,47 @@
   use strict;
   use warnings;
 
-  use lib $ENV{'ARPATH'}.'/ce/';
-
-  use Lycon;
-
   use lib $ENV{'ARPATH'}.'/lib/sys/';
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Style;
   use Arstd;
 
+  use Lycon;
+
+  use Lycon::Clk;
+  use Lycon::Ctl;
+  use Lycon::Kbd;
+  use Lycon::Loop;
+
 # ---   *   ---   *   ---
 
+my $Cache={
 
+  terminate=>0,
+
+};
+
+# ---   *   ---   *   ---
+
+Lycon::Ctl::register_events(
+
+  -EXIT=>[0,0,sub {$Cache->{terminate}=1}],
+
+);
+
+Lycon::Kbd::nit();
+Lycon::Loop::set_quit(sub {
+
+  return $Cache->{terminate};
+
+});
+
+Lycon::Clk::nit();
+
+# ---   *   ---   *   ---
+
+Lycon::Loop::run();
 
 # ---   *   ---   *   ---
 1; # ret

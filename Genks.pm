@@ -19,6 +19,8 @@ package Genks;
   use strict;
   use warnings;
 
+  use English qw(-no_match_vars);
+
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
@@ -80,12 +82,14 @@ sub parse_kbdlay {
   };$Cache{-LAYOUT_I}=\@layi;
   return \%kbdlay;
 
-};$Cache{-LAYOUT}=parse_kbdlay();
+};
 
-# arg=keyname
+$Cache{-LAYOUT}=parse_kbdlay();
+
+# ---   *   ---   *   ---
 # Key Index, a simple shorthand
-sub KI {
-  my $key_name=shift;
+
+sub KI($key_name) {
   return $Cache{-LAYOUT}->{$key_name};
 
 };
@@ -187,12 +191,14 @@ sub rdti {
 };
 
 # ---   *   ---   *   ---
-
-# in: keymap array,file to text-input defs
 # reads user-defined keymap
+
 sub process_keymap($tifile,@KEYMAP) {
 
-  $tifile=Shb7::file($tifile);
+  if(length $tifile) {
+    $tifile=Shb7::file($tifile);
+
+  };
 
 # ---   *   ---   *   ---
 
@@ -234,19 +240,9 @@ sub process_keymap($tifile,@KEYMAP) {
 
 # ---   *   ---   *   ---
 
-sub pl_keymap {
+sub pl_keymap($src,$dst) {
 
-  my $aref=shift;
-  my $href=shift;
-
-  my $non_ti=shift;
-
-#  $non_ti=(!defined $non_ti)
-#    ? length(keys %$href)
-#    : $non_ti
-#    ;
-
-  process_keymap($aref,'');
+  process_keymap(q{},@$src);
   my @KEYMAP=@{ $Cache{-KEYMAP} };
 
 # ---   *   ---   *   ---
@@ -269,7 +265,9 @@ sub pl_keymap {
           $ev=eval("sub {$ev;};");
 
         };
+
       };
+
     };
 
   };
@@ -277,9 +275,11 @@ sub pl_keymap {
 # ---   *   ---   *   ---
 
   my @keylay=();
-
   my @lay=@{ $Cache{-LAYOUT_I} };
-  my $i=0;while(@lay) {
+
+  my $i=0;
+
+  while(@lay) {
     my $kname=shift @lay;
     my $kcode=KI($kname);
 
@@ -291,22 +291,28 @@ sub pl_keymap {
       if($used_keys[$j]==$kcode) {
 
         $keylay[$i]=sprintf "%c",$j+1;
-        $href->{$KEYMAP[$j*2]}=$j;
+        $dst->{$KEYMAP[$j*2]}=$j;
 
         last;
 
       };
 
-    };$i++;
+    };
+
+    $i++;
+
   };
 
 # ---   *   ---   *   ---
+
+#map {say sprintf "0x%02X",ord($ARG)} @keylay;
 
   return (
 
     0,
 
     (join '',@keylay),
+
     $#used_keys+1,
     $Cache{-NON_TI}
 
