@@ -1,0 +1,18 @@
+>Lycon v1.00.0
+
+
+*>ASCII draw
+~ f:../help/vec4.pm migrate into f:./Vec4.pm
+~ f:../help/sector.pm migrate into f:./Rect.pm
+
+~ Draw interface methods
+~ ^ Line
+~ ^ Rect
+~ ^ Shape
+
+~ General-purpose UI stuff
+~ ^ Prompt
+~ ^ List
+~ ^ Scroll
+~ ^ Slider
+~ ^ Toggles

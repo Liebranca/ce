@@ -1,7 +1,15 @@
 #!/usr/bin/perl
+# ---   *   ---   *   ---
+# LYCON DPY
+# What sits between loop
+# and whatever handles drawing
 #
-# This is a placeholder ;>
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
 #
+# CONTRIBUTORS
+# lyeb,
 # ---   *   ---   *   ---
 
 # deps
@@ -10,6 +18,8 @@ package Lycon::Dpy;
   use v5.36.0;
   use strict;
   use warnings;
+
+  use English qw(-no_match_vars);
 
 # ---   *   ---   *   ---
 
