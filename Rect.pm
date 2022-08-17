@@ -124,7 +124,14 @@ sub draw($self) {
 
 sub textfit($self,$str,$border=2) {
 
-  linewrap(\$str,$self->{sz_x}-($border*2));
+  linewrap(
+
+    \$str,
+    $self->{sz_x}-($border*2),
+
+    add_newlines=>0,
+
+  );
 
   my ($x,$y)=@{$self->{top_l}};
   my @lines=split $NEWLINE_RE,$str;
@@ -139,14 +146,14 @@ sub textfit($self,$str,$border=2) {
   @lines=@lines[0..$bot];
 
   for my $line(@lines) {
-    $line=sprintf "\e[%i;%iH$line",
+    $line=sprintf "\e[%i;%iH\e[2K$line",
       $y+1+$border,$x+1+$border;
 
     $y++;
 
   };
 
-  print join $NULLSTR,@lines;
+  return join $NULLSTR,@lines;
 
 };
 

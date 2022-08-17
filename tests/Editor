@@ -10,15 +10,21 @@ package main;
   use strict;
   use warnings;
 
+  use lib $ENV{'ARPATH'}.'/ce/';
+
+  use Rect;
+
   use lib $ENV{'ARPATH'}.'/lib/sys/';
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Style;
+  use Arstd::IO;
 
   use Lycon;
 
   use Lycon::Clk;
   use Lycon::Ctl;
+  use Lycon::Dpy;
   use Lycon::Kbd;
   use Lycon::Loop;
 
@@ -35,18 +41,45 @@ my $Cache={
 my $Screen='';
 my $Cursor=[0,0];
 
+my $Scroll_Y=0;
+
+my $Y_Offset=0;
+
 my @ttysz=(0,0);
 Lycon::ttysz(\@ttysz);
+
+my $Canvas=Rect->nit(($ttysz[0]-2)."x$ttysz[0]");
+my $File=orc('./avto');
+my @File_Lines=split $NEWLINE_RE,$File;
+
+sub on_scroll() {
+
+  $Y_Offset+=$Scroll_Y;
+  $Y_Offset*=0+(($Y_Offset>=0));
+
+  my $slice=join "\n",@File_Lines[
+    $Y_Offset..$ttysz[0]-2
+
+  ];
+
+  $Screen=$Canvas->textfit($slice,0);
+  $Scroll_Y=0;
+
+};
+
+on_scroll();
 
 # ---   *   ---   *   ---
 
 sub cursor_up() {
+  $Scroll_Y-=$Cursor->[1]==0;
   $Cursor->[1]-=$Cursor->[1]>0;
 
 };
 
 sub cursor_down() {
-  $Cursor->[1]+=$Cursor->[1]<$ttysz[0];
+  $Scroll_Y+=$Cursor->[1]>=$ttysz[1]-2;
+  $Cursor->[1]+=$Cursor->[1]<$ttysz[1];
 
 };
 
@@ -56,7 +89,7 @@ sub cursor_left() {
 };
 
 sub cursor_right() {
-  $Cursor->[0]+=$Cursor->[0]<$ttysz[1];
+  $Cursor->[0]+=$Cursor->[0]<$ttysz[0];
 
 };
 
@@ -93,23 +126,40 @@ Lycon::Loop::set_quit(sub {
 Lycon::Clk::nit();
 Lycon::Loop::set_logic(sub {
 
-Lycon::Loop::dwbuff($Screen.
+  on_scroll() if $Scroll_Y;
 
-  sprintf "\e[%i;1H%lc \e[%i;%iH",
+  Lycon::Loop::dwbuff($Screen.
 
-    $ttysz[0],
+    # status bar
+    (sprintf
 
-    Lycon::clkdr(),
+      "\e[%i;1H\e[2K\e[7m%lc ".
+      "%i/%i %i %i\e[0m",
 
-    $Cursor->[1],
-    $Cursor->[0],
+      $ttysz[1],
+      Lycon::clkdr(),
 
-);
+      $Cursor->[1],$ttysz[1],$Y_Offset,$Scroll_Y
+
+    ).
+
+    # cursor
+    (sprintf "\e[%i;%iH\e[?25h",
+
+      $Cursor->[1],
+      $Cursor->[0]
+
+    )
+
+  );
 
 },[]);
 
 Lycon::Kbd::swap_to();
+
+Lycon::Dpy::beg();
 Lycon::Loop::run();
+Lycon::Dpy::end();
 
 # ---   *   ---   *   ---
 1; # ret
