@@ -305,8 +305,6 @@ sub pl_keymap($src,$dst) {
 
 # ---   *   ---   *   ---
 
-#map {say sprintf "0x%02X",ord($ARG)} @keylay;
-
   return (
 
     0,

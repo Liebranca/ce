@@ -1,0 +1,115 @@
+#!/usr/bin/perl
+#
+# finally!
+#
+# ---   *   ---   *   ---
+
+# deps
+package main;
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use Style;
+
+  use Lycon;
+
+  use Lycon::Clk;
+  use Lycon::Ctl;
+  use Lycon::Kbd;
+  use Lycon::Loop;
+
+  binmode(STDOUT,':utf8');
+
+# ---   *   ---   *   ---
+
+my $Cache={
+
+  terminate=>0,
+
+};
+
+my $Screen='';
+my $Cursor=[0,0];
+
+my @ttysz=(0,0);
+Lycon::ttysz(\@ttysz);
+
+# ---   *   ---   *   ---
+
+sub cursor_up() {
+  $Cursor->[1]-=$Cursor->[1]>0;
+
+};
+
+sub cursor_down() {
+  $Cursor->[1]+=$Cursor->[1]<$ttysz[0];
+
+};
+
+sub cursor_left() {
+  $Cursor->[0]-=$Cursor->[0]>0;
+
+};
+
+sub cursor_right() {
+  $Cursor->[0]+=$Cursor->[0]<$ttysz[1];
+
+};
+
+# ---   *   ---   *   ---
+
+Lycon::Ctl::register_events(
+
+  -EXIT=>[0,0,sub {$Cache->{terminate}=1}],
+  -MOV_A=>[
+
+    # up
+    \&cursor_up,\&cursor_up,0,
+
+    # left
+    \&cursor_left,\&cursor_left,0,
+
+    # down
+    \&cursor_down,\&cursor_down,0,
+
+    # right
+    \&cursor_right,\&cursor_right,0,
+
+  ],
+
+);
+
+Lycon::Kbd::nit();
+Lycon::Loop::set_quit(sub {
+
+  return $Cache->{terminate};
+
+});
+
+Lycon::Clk::nit();
+Lycon::Loop::set_logic(sub {
+
+Lycon::Loop::dwbuff($Screen.
+
+  sprintf "\e[%i;1H%lc \e[%i;%iH",
+
+    $ttysz[0],
+
+    Lycon::clkdr(),
+
+    $Cursor->[1],
+    $Cursor->[0],
+
+);
+
+},[]);
+
+Lycon::Kbd::swap_to();
+Lycon::Loop::run();
+
+# ---   *   ---   *   ---
+1; # ret

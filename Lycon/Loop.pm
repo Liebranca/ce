@@ -111,7 +111,7 @@ sub get_state() {
 
 sub run() {
 
-  my $panic=60;
+  my $panic=600;
   while(!$Cache->{quit_proc}->()) {
 
     $Cache->{busy}=Lycon::gtevcnt();

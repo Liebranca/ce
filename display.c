@@ -25,6 +25,7 @@
 
 // ---   *   ---   *   ---
 // constants
+
   #define RBUFF_SZ 0x1000
 
   #define RLINE_SZY 0x40
@@ -41,7 +42,10 @@ typedef struct {
       int x;
       int y;
 
-    };int f[2];
+    };
+
+    int f[2];
+
   } cursor;
 
   // screen size
@@ -50,7 +54,10 @@ typedef struct {
       int x;
       int y;
 
-    };int f[2];
+    };
+
+    int f[2];
+
   } wsz;
 
   // user-end canvas
@@ -82,7 +89,11 @@ void stcursor(int x,int y) {
   dpy.cursor.x=x;dpy.cursor.y=y;
   cursormv(0,0);
 
-};void cursormv(int x,int y) {
+};
+
+// ---   *   ---   *   ---
+
+void cursormv(int x,int y) {
 
   // unconditionally add
   dpy.cursor.x+=x;dpy.cursor.y+=y;
@@ -113,25 +124,32 @@ void stcursor(int x,int y) {
 
 // manual cat
 void badd(char* src) {
+
   strncpy(
     dpy.rbuff+dpy.rbuff_i,
     src,
 
     RBUFF_SZ-dpy.rbuff_i
 
-  );dpy.rbuff_i+=strlen(src);
+  );
+
+  dpy.rbuff_i+=strlen(src);
   dpy.rbuff_i&=RBUFF_SZ-1;
 
+};
+
+// ---   *   ---   *   ---
 // buffer wipe
-};void bcl(void) {
+
+void bcl(void) {
   memset(dpy.rbuff,0,RBUFF_SZ);
   dpy.rbuff_i^=dpy.rbuff_i;
 
 };
 
 // ---   *   ---   *   ---
-
 // draw the buffer
+
 void dpyrend(void) {
 
   // recycle mem
@@ -147,32 +165,40 @@ void dpyrend(void) {
 
       y+1,dpy.rlines[y]
 
-    );badd(m);
+    );
+
+    badd(m);
     memset(dpy.rlines[y],0,128);
 
   };
 
 // ---   *   ---   *   ---
+// move cursor to pos and unhide
 
-  // move cursor to pos and unhide
   sprintf(m,
     "\e[%u;%uH\e[?25h",
     dpy.cursor.y+1,
     dpy.cursor.x+1
 
-  );badd(m);
+  );
+
+  badd(m);
 
   write(
     dpy.fd,
     dpy.rbuff,
     dpy.rbuff_i
 
-  );bcl();badd("\e[?25l");
+  );
+
+  bcl();
+  badd("\e[?25l");
+
 };
 
 // ---   *   ---   *   ---
-
 // nit the display
+
 void dpynt(int fd) {
 
   memset(&dpy,0,sizeof(DPY));

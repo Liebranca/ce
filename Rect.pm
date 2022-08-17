@@ -127,7 +127,6 @@ sub textfit($self,$str,$border=2) {
   linewrap(\$str,$self->{sz_x}-($border*2));
 
   my ($x,$y)=@{$self->{top_l}};
-
   my @lines=split $NEWLINE_RE,$str;
 
   my $bot=$self->{sz_y}-2-$border;

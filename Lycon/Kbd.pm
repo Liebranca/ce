@@ -25,12 +25,17 @@ package Lycon::Kbd;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
-  use Arstd;
+
+  use Arstd::Array;
+  use Arstd::IO;
+
   use Chk;
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
+  use Lycon;
   use Lycon::Ctl;
+
   use Genks;
 
 # ---   *   ---   *   ---
@@ -61,7 +66,7 @@ sub define_catch($has,$inv,$type,$key) {
   # catch not bound
   if(!$has && $inv) {
 
-    Arstd::errout(
+    errout(
       $E_NOKEY,
 
       args=>[$type,$key],
@@ -72,7 +77,7 @@ sub define_catch($has,$inv,$type,$key) {
   # catch already bound
   } elsif($has && !$inv) {
 
-    Arstd::errout(
+    errout(
       $E_YESKEY,
 
       args=>[$type,$key],
@@ -226,8 +231,8 @@ sub nit() {
   # ^get keydata for all
   for my $mod(values %{$modules}) {
 
-    my @ids=Arstd::array_keys($mod->{kbd});
-    my @keys=Arstd::array_values($mod->{kbd});
+    my @ids=array_keys($mod->{kbd});
+    my @keys=array_values($mod->{kbd});
 
     # check that reserved keys are mapped
     while(@ids && @keys) {
@@ -311,12 +316,12 @@ sub swap_to($pkg=undef) {
 
   my $modules=$Lycon::Ctl::Cache->{modules};
 
-  my @keys=Arstd::array_keys(
+  my @keys=array_keys(
     $modules->{$pkg}->{kbd}
 
   );
 
-  my @values=Arstd::array_values(
+  my @values=array_values(
     $modules->{$pkg}->{kbd}
 
   );

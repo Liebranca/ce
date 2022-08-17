@@ -93,7 +93,7 @@ sub draw($self) {
 
     my ($x,$y)=@$pt;
 
-    printf "\e[%i;%iH.",int($y)+1,int($x)+1;
+    printf "\e[%i;%iH*",int($y)+1,int($x)+1;
 
   };
 

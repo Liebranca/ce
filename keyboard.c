@@ -300,8 +300,10 @@ void evpush(char key) {
   char do_push=1;for(char x=0;x<kbd.evstack_i;x++) {
     if(key==kbd.evstack[x]) {do_push=0;break;};
 
+  };
+
   // push if not found
-  };if(do_push) {
+  if(do_push) {
     kbd.evstack[kbd.evstack_i]=key;
     kbd.evstack_i++;
 
@@ -330,7 +332,8 @@ void keyset(char key,char rel) {
     K_TAP_FUNCS[(x+1)*IS_TAP(x)]();
 
     // register event
-    evpush(x);return;
+    evpush(x);
+    return;
 
   };
 
@@ -354,7 +357,7 @@ void keyset(char key,char rel) {
 void keychk(void) {
 
   // ensure top is nil
-  kbd.keys[kbd.evstack_i]=0x00;
+  kbd.evstack[kbd.evstack_i]=0x00;
   kbd.evcnt^=kbd.evcnt;
 
   int* ev=kbd.evstack+0;

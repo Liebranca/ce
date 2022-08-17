@@ -1,11 +1,11 @@
 // ---   *   ---   *   ---
 // CE
 // champs' editor
-
+//
 // LIBRE SOFTWARE
 // Licensed under GNU GPL3
 // be a bro and inherit
-
+//
 // CONTRIBUTORS
 // lyeb,
 // ---   *   ---   *   ---
@@ -40,7 +40,14 @@
 
     int mode;
 
-  } STRUCT_CE;static STRUCT_CE CE={0};
+    char* fbuff;
+    char** flines;
+
+    size_t line_cnt;
+
+  } STRUCT_CE;
+
+  static STRUCT_CE CE={0};
 
 // ---   *   ---   *   ---
 
@@ -51,8 +58,8 @@
   };
 
 // ---   *   ---   *   ---
-
 // text input
+
 void pti(void) {
 
   int* cursor=gtcursor();
@@ -71,14 +78,18 @@ void pti(void) {
         if(!l[i]) {l[i]=' ';};
 
       };
-    };l[x]=*ibuff;
+    };
+
+    l[x]=*ibuff;
 
     int mx=1+(9998*(*ibuff=='\n'));
 
     strcpy(gtrline(y),l);
     cursormv(mx,0);
 
-  };*ibuff^=*ibuff;
+  };
+
+  *ibuff^=*ibuff;
 
 };
 
@@ -86,13 +97,18 @@ void pti(void) {
 // file handling
 
 void dumpf(void) {
+
   FILE* f=fopen("./test","w+");
+
   for(int y=0;y<64;y++) {
+
     char* line=CE.file.lines[y];
+
     if(*line) {
       fwrite(line,strlen(line),sizeof(char),f);
 
     };
+
   };
 
   fclose(f);
@@ -100,17 +116,23 @@ void dumpf(void) {
 };
 
 // ---   *   ---   *   ---
-
 // load these in last
+
   #include "keycalls.h"
+
+// ---   *   ---   *   ---
 
 void main(int argc,char** argv) {
 
   do {
+
     if(!strcmp(*argv,"-k")) {
       CE.mode=CE_MKEYS;
 
-    };argv++;argc--;
+    };
+
+    argv++;
+    argc--;
 
   } while(argc);
 
@@ -124,7 +146,9 @@ void main(int argc,char** argv) {
 
   };
 
-  // init the program clock
+// ---   *   ---   *   ---
+// init the program clock
+
   clknt(
     0x6000,
 
@@ -139,28 +163,39 @@ void main(int argc,char** argv) {
   K_FUNCS_LOAD;
 
 // ---   *   ---   *   ---
+// looparino
 
   int* sc_dim=gtwsz();
+  int PANIC_TIMER=1600;
 
-  // looparino
-  int PANIC_TIMER=1600;do {
+  do {
 
     // render last frame
     dpyrend();
 
     // update the draw clock and tick
-    sprintf(gtrline(sc_dim[1]-1),
-        "%lc",clkdr()
+    sprintf(
 
-    );tick(gtevcnt());
+      gtrline(sc_dim[1]-1),
+      "%lc",clkdr()
+
+    );
+
+    tick(gtevcnt());
 
     // run event loop
-    keyrd();keychk();pti();
+    keyrd();
+    keychk();
+
+//    pti();
 
 // ---   *   ---   *   ---
 // cleanup
 
   } while(PANIC_TIMER--);
+
+  free(CE.flines);
+  free(CE.fbuff);
 
   dpycl();
   exit(0);

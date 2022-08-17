@@ -23,6 +23,8 @@ package Lycon::Ctl;
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
+  use Arstd::Array;
+
   use Chk;
   use Queue;
 
@@ -83,8 +85,8 @@ sub register_events(@args) {
 
   my %ids=@{$Cache->{keysets}};
 
-  my @keys=Arstd::array_keys(\@args);
-  my @keycalls=Arstd::array_values(\@args);
+  my @keys=array_keys(\@args);
+  my @keycalls=array_values(\@args);
 
   while(@keys && @keycalls) {
 
