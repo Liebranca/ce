@@ -139,13 +139,15 @@ sub textfit($self,$str,$border=2) {
   my $bot=$self->{sz_y}-2-$border;
 
   if($#lines < $bot) {
-    $bot=$#lines;
+    my $diff=$bot-$#lines;
+    push @lines,($NULLSTR) x $diff;
 
   };
 
   @lines=@lines[0..$bot];
 
   for my $line(@lines) {
+
     $line=sprintf "\e[%i;%iH\e[2K$line",
       $y+1+$border,$x+1+$border;
 

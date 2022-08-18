@@ -57,10 +57,12 @@ sub on_scroll() {
   $Y_Offset+=$Scroll_Y;
   $Y_Offset*=0+(($Y_Offset>=0));
 
-  my $slice=join "\n",@File_Lines[
+  my @slice=@File_Lines[
     $Y_Offset..$ttysz[0]-2
 
   ];
+
+  my $slice=join "\n",@slice;
 
   $Screen=$Canvas->textfit($slice,0);
   $Scroll_Y=0;
