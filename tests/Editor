@@ -10,6 +10,8 @@ package main;
   use strict;
   use warnings;
 
+  use English qw(-no_match_vars);
+
   use lib $ENV{'ARPATH'}.'/ce/';
 
   use Rect;
@@ -18,6 +20,7 @@ package main;
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Style;
+  use Arstd::String;
   use Arstd::IO;
 
   use Lycon;
@@ -38,7 +41,8 @@ my $Cache={
 
 };
 
-my $Screen='';
+my $Update_Screen=1;
+my $Update_Cursor=0;
 my $Cursor=[0,0];
 
 my $Scroll_Y=0;
@@ -48,23 +52,47 @@ my $Y_Offset=0;
 my @ttysz=(0,0);
 Lycon::ttysz(\@ttysz);
 
-my $Canvas=Rect->nit(($ttysz[0]-2)."x$ttysz[0]");
+my $Canvas=Rect->nit(
+  "$ttysz[0]x$ttysz[1]",
+  border=>0,
+
+);
+
 my $File=orc('./avto');
+
 my @File_Lines=split $NEWLINE_RE,$File;
+
+@File_Lines=$Canvas->textfit(
+  \@File_Lines,
+  offscreen=>1,
+
+);
+
+my @Screen_Lines=();
 
 sub on_scroll() {
 
   $Y_Offset+=$Scroll_Y;
   $Y_Offset*=0+(($Y_Offset>=0));
 
-  my @slice=@File_Lines[
-    $Y_Offset..$ttysz[0]-2
+  my $beg=$Y_Offset;
+  my $end=$Y_Offset+$ttysz[1]-1;
 
-  ];
+  for my $x($beg,$end) {
+    if($x>$#File_Lines) {$x=$#File_Lines};
 
-  my $slice=join "\n",@slice;
+  };
 
-  $Screen=$Canvas->textfit($slice,0);
+  @Screen_Lines=@File_Lines[$beg..$end];
+  if(@Screen_Lines<$ttysz[1]) {
+    my $diff=$ttysz[1]-@Screen_Lines;
+    push @Screen_Lines,($NULLSTR) x $diff;
+
+  };
+
+  my $i=1;
+  map {$ARG="\e[$i;1H\e[2K$ARG";$i++} @Screen_Lines;
+
   $Scroll_Y=0;
 
 };
@@ -73,25 +101,70 @@ on_scroll();
 
 # ---   *   ---   *   ---
 
+my $Curline_Original=$NULLSTR;
+
+sub highlight_current() {
+
+  my $curline=$Cursor->[1];
+  $curline=$#Screen_Lines if $curline>$#Screen_Lines;
+
+  $Curline_Original=$Screen_Lines[$curline];
+
+  my $diff=
+
+      (length $Curline_Original)
+    - length descape($Curline_Original)
+
+  ;
+
+  my $sz=$ttysz[0]+$diff;
+  $Screen_Lines[$curline]=~ s[\r\n$][];
+
+  $Screen_Lines[$curline]=sprintf
+
+    "\e[40;5m%-${sz}s\e[0m\r\n",
+    $Screen_Lines[$curline]
+
+  ;
+
+};
+
+sub restore_current() {
+
+  my $curline=$Cursor->[1];
+  $curline=$#Screen_Lines if $curline>$#Screen_Lines;
+
+  $Screen_Lines[$curline]=$Curline_Original;
+
+};
+
+# ---   *   ---   *   ---
+
 sub cursor_up() {
   $Scroll_Y-=$Cursor->[1]==0;
   $Cursor->[1]-=$Cursor->[1]>0;
+
+  $Update_Cursor=1;
 
 };
 
 sub cursor_down() {
   $Scroll_Y+=$Cursor->[1]>=$ttysz[1]-2;
-  $Cursor->[1]+=$Cursor->[1]<$ttysz[1];
+  $Cursor->[1]+=$Cursor->[1]<$ttysz[1]-2;
+
+  $Update_Cursor=1;
 
 };
 
 sub cursor_left() {
   $Cursor->[0]-=$Cursor->[0]>0;
+  $Update_Cursor=1;
 
 };
 
 sub cursor_right() {
   $Cursor->[0]+=$Cursor->[0]<$ttysz[0];
+  $Update_Cursor=1;
 
 };
 
@@ -128,32 +201,48 @@ Lycon::Loop::set_quit(sub {
 Lycon::Clk::nit();
 Lycon::Loop::set_logic(sub {
 
+  $Update_Screen|=($Scroll_Y!=0) || $Update_Cursor;
+
   on_scroll() if $Scroll_Y;
 
-  Lycon::Loop::dwbuff($Screen.
+  my $screen=$NULLSTR;
+  if($Update_Screen) {
+    highlight_current();
+
+    $screen=join $NULLSTR,@Screen_Lines;
+
+    restore_current();
+
+  };
+
+  Lycon::Loop::dwbuff(
+
+    "\e[?25l$screen".
 
     # status bar
     (sprintf
 
       "\e[%i;1H\e[2K\e[7m%lc ".
-      "%i/%i %i %i\e[0m",
+      "%i/%i %i\e[0m",
 
       $ttysz[1],
       Lycon::clkdr(),
 
-      $Cursor->[1],$ttysz[1],$Y_Offset,$Scroll_Y
+      $Cursor->[1],$ttysz[1],$Y_Offset,
 
     ).
 
     # cursor
     (sprintf "\e[%i;%iH\e[?25h",
 
-      $Cursor->[1],
-      $Cursor->[0]
+      $Cursor->[1]+1,
+      $Cursor->[0]+1
 
     )
 
   );
+
+  $Update_Screen=0;
 
 },[]);
 

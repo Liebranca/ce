@@ -38,17 +38,30 @@ package Rect;
 # ---   *   ---   *   ---
 # constructor
 
-sub nit($class,$dim,$pos_x=0,$pos_y=0) {
+sub nit(
+
+  # implicit
+  $class,
+
+  # actual
+  $dim,%O
+
+) {
+
+  # defaults
+  $O{pos_x}//=0;
+  $O{pos_y}//=0;
+  $O{border}//=2;
 
   my ($sz_x,$sz_y)=split m[x],$dim;
 
   my %pts=(
 
-    top_l=>Vec4->nit($pos_x,$pos_y),
-    top_r=>Vec4->nit($pos_x+$sz_x,$pos_y),
+    top_l=>Vec4->nit($O{pos_x},$O{pos_y}),
+    top_r=>Vec4->nit($O{pos_x}+$sz_x,$O{pos_y}),
 
-    bot_l=>Vec4->nit($pos_x,$pos_y+$sz_y),
-    bot_r=>Vec4->nit($pos_x+$sz_x,$pos_y+$sz_y),
+    bot_l=>Vec4->nit($O{pos_x},$O{pos_y}+$sz_y),
+    bot_r=>Vec4->nit($O{pos_x}+$sz_x,$O{pos_y}+$sz_y),
 
   );
 
@@ -57,6 +70,10 @@ sub nit($class,$dim,$pos_x=0,$pos_y=0) {
 
     sz_x=>$sz_x,
     sz_y=>$sz_y,
+
+    pos_x=>$O{pos_x},
+    pos_y=>$O{pos_y},
+    border=>$O{border},
 
     top_l=>$pts{top_l},
     top_r=>$pts{top_r},
@@ -122,40 +139,81 @@ sub draw($self) {
 
 # ---   *   ---   *   ---
 
-sub textfit($self,$str,$border=2) {
+sub textfit($self,$lines,%O) {
 
-  linewrap(
+  state $line_brk_re=qr[\n (?! $)]x;
 
-    \$str,
-    $self->{sz_x}-($border*2),
+  # defaults
+  $O{offscreen}//=0;
 
-    add_newlines=>0,
+  my @lines=@$lines;
 
-  );
+  my $border=$self->{border};
+  my $line_sz=$self->{sz_x}-($border*2);
 
-  my ($x,$y)=@{$self->{top_l}};
-  my @lines=split $NEWLINE_RE,$str;
+  my $y_limit=$self->{sz_y}-2-$border;
+  my $bot;
 
-  my $bot=$self->{sz_y}-2-$border;
+  if(!$O{offscreen}) {
+    $bot=$y_limit;
 
-  if($#lines < $bot) {
-    my $diff=$bot-$#lines;
-    push @lines,($NULLSTR) x $diff;
+  } else {
+    $bot=@lines;
 
   };
 
-  @lines=@lines[0..$bot];
+  my $i=0;
+  while($i<@lines && $i<$bot) {
+
+    #if(defined !$lines[$i]) {last};
+
+    $lines[$i]=descape($lines[$i]);
+    linewrap(\$lines[$i],$line_sz);
+
+    if($lines[$i]=~ $line_brk_re) {
+
+      my @head=();
+      my @tail=();
+
+      if($i>0) {
+        @head=@lines[0..$i-1];
+
+      };
+
+      if($i<$#lines) {
+        @tail=@lines[$i+1..$#lines];
+
+      };
+
+      my @insert=split m[\n],$lines[$i];
+
+      @lines=(@head,@insert,@tail);
+      $i+=int(@insert);
+
+    } else {$i++};
+
+  };
+
+  my $nul="\x{00}";
+  my $us="\x{1F}";
+
+  my $ascii_ctl=qr{[$nul-$us]}x;
 
   for my $line(@lines) {
 
-    $line=sprintf "\e[%i;%iH\e[2K$line",
-      $y+1+$border,$x+1+$border;
+    chomp $line;
+    while($line=~ s[($ascii_ctl)][#:cut;>]) {
 
-    $y++;
+      my $escaped=$1;
+
+      $escaped=chr(ord($1)+0x100);
+      $line=~ s[#:cut;>][$escaped];
+
+    };
 
   };
 
-  return join $NULLSTR,@lines;
+  return @lines;
 
 };
 
