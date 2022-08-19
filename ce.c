@@ -187,7 +187,7 @@ void main(int argc,char** argv) {
     keyrd();
     keychk();
 
-//    pti();
+    pti();
 
 // ---   *   ---   *   ---
 // cleanup

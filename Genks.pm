@@ -24,9 +24,9 @@ package Genks;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
-  use Arstd;
-  use Chk;
+  use Arstd::IO;
 
+  use Chk;
   use Shb7;
 
   use lib $ENV{'ARPATH'}.'/lib/';
@@ -102,7 +102,7 @@ sub rdkfile {
   my $fpath=shift;
   my $pl_keys=shift;
 
-  my $s=Arstd::orc($fpath);
+  my $s=orc($fpath);
   my $tap=(split "onTap\n",$s)[1];
   $tap=(split "onHel\n",$tap)[0];
 
@@ -157,7 +157,7 @@ sub rdti {
   my $tifile=shift;
   if(!$tifile) {return ();};
 
-  my @table=split "\n",Arstd::orc($tifile);
+  my @table=split "\n",orc($tifile);
   my @map=();
 
   while(@table) {
@@ -406,7 +406,7 @@ sub keymap_generator($fname) {
 
   for my $key(qw(KEYMAP K_COUNT KEYLAY)) {
 
-    $result.=Emit::C::datasec(
+    $result.=Emit::C->datasec(
 
       $key,
 
@@ -483,7 +483,7 @@ sub keycalls_generator($fname) {
 
       if(!$code) {next};
 
-      $defs.=Emit::C::fnwrap(
+      $defs.=Emit::C->fnwrap(
         "K_$suff"."_FUNC_$name",
         $code,
 
