@@ -40,18 +40,6 @@ sub always {return 1;};
 sub never {return 0;};
 
 # ---   *   ---   *   ---
-# flush out the draw buffer as-is
-
-sub ascii {
-
-  print $Cache->{draw_buff};
-  STDOUT->flush();
-
-  $Cache->{draw_buff}='';
-
-};
-
-# ---   *   ---   *   ---
 # global state
 
   $Cache={
@@ -61,7 +49,7 @@ sub ascii {
 
     quit_proc=>\&never,
 
-    draw_proc=>\&ascii,
+    gd=>'ANSI',
     draw_buff=>'',
 
     stack=>[],
@@ -75,7 +63,7 @@ sub ascii {
 
 sub dwbuff($s) {
   $s//=$NULLSTR;
-  $Cache->{draw_buff}.=$s
+  $Cache->{gd}->{-buff}.=$s;
 
 };
 
@@ -89,7 +77,24 @@ sub set_logic($proc,$args) {
 };
 
 sub set_quit($proc) {$Cache->{quit_proc}=$proc};
-sub set_draw($proc) {$Cache->{draw_proc}=$proc};
+
+sub graphics($driver_name=undef) {
+
+  if(defined $driver_name) {
+
+    $Cache->{gd}=eval(
+      q[Graphics::].
+      $driver_name.
+
+      q[->new_frame()]
+
+    );
+
+  };
+
+  return $Cache->{gd};
+
+};
 
 # ---   *   ---   *   ---
 # gets functions currently used
@@ -111,14 +116,16 @@ sub get_state() {
 
 sub run() {
 
+  my %ctx=(gd=>$Cache->{gd});
+
   my $panic=600;
   while(!$Cache->{quit_proc}->()) {
 
     $Cache->{busy}=Lycon::gtevcnt();
 
     # draw on update
-    if(0<length $Cache->{draw_buff}) {
-      $Cache->{draw_proc}->()
+    if(0<length $Cache->{gd}->{-buff}) {
+      $Cache->{gd}->draw(%ctx);
 
     };
 

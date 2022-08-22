@@ -31,6 +31,8 @@ package main;
   use Lycon::Kbd;
   use Lycon::Loop;
 
+  use Graphics::ANSI;
+
   binmode(STDOUT,':utf8');
 
 # ---   *   ---   *   ---
@@ -43,20 +45,22 @@ my $Cache={
 
 my $Update_Screen=1;
 my $Update_Cursor=0;
-my $Cursor=[0,0];
 
 my $Scroll_Y=0;
-
 my $Y_Offset=0;
+
+# ---   *   ---   *   ---
 
 my @ttysz=(0,0);
 Lycon::ttysz(\@ttysz);
 
-my $Canvas=Rect->nit(
-  "$ttysz[0]x$ttysz[1]",
-  border=>0,
+my $G=Lycon::Loop::graphics('ANSI');
+$G->nit($ttysz[0],$ttysz[1],0);
 
-);
+my $Canvas=$G->{-canvas};
+my $Cursor=$G->{-cursor};
+
+# ---   *   ---   *   ---
 
 my $File=orc('./avto');
 
@@ -76,7 +80,7 @@ sub on_scroll() {
   $Y_Offset*=0+(($Y_Offset>=0));
 
   my $beg=$Y_Offset;
-  my $end=$Y_Offset+$ttysz[1]-1;
+  my $end=$Y_Offset+$Canvas->{sz_y}-1;
 
   for my $x($beg,$end) {
     if($x>$#File_Lines) {$x=$#File_Lines};
@@ -84,14 +88,24 @@ sub on_scroll() {
   };
 
   @Screen_Lines=@File_Lines[$beg..$end];
-  if(@Screen_Lines<$ttysz[1]) {
-    my $diff=$ttysz[1]-@Screen_Lines;
+  if(@Screen_Lines<$Canvas->{sz_y}) {
+    my $diff=$Canvas->{sz_y}-@Screen_Lines;
     push @Screen_Lines,($NULLSTR) x $diff;
 
   };
 
-  my $i=1;
-  map {$ARG="\e[$i;1H\e[2K$ARG";$i++} @Screen_Lines;
+  my $i=1;map {
+
+    $ARG=
+
+    q[$:gd_mvcur ].$i.q[,1;>].
+    q[$:gd_cline;>].
+
+      "$ARG";
+
+    $i++;
+
+  } @Screen_Lines;
 
   $Scroll_Y=0;
 
@@ -112,18 +126,25 @@ sub highlight_current() {
 
   my $diff=
 
-      (length $Curline_Original)
-    - length descape($Curline_Original)
+    (length $Curline_Original)
+  - length Peso::Ipret::depesc($Curline_Original)
 
   ;
 
-  my $sz=$ttysz[0]+$diff;
-  $Screen_Lines[$curline]=~ s[\r\n$][];
+  my $sz=$Canvas->{sz_x}+$diff;
 
-  $Screen_Lines[$curline]=sprintf
+  $Screen_Lines[$curline]=
 
-    "\e[40;5m%-${sz}s\e[0m\r\n",
-    $Screen_Lines[$curline]
+    q[$:gd_color 0x82;>].
+
+    (
+
+    sprintf "%-${sz}s",
+      $Screen_Lines[$curline]
+
+    ).
+
+    q[$:gd_color 0x07;>]
 
   ;
 
@@ -149,8 +170,8 @@ sub cursor_up() {
 };
 
 sub cursor_down() {
-  $Scroll_Y+=$Cursor->[1]>=$ttysz[1]-2;
-  $Cursor->[1]+=$Cursor->[1]<$ttysz[1]-2;
+  $Scroll_Y+=$Cursor->[1]>=$Canvas->{sz_y}-2;
+  $Cursor->[1]+=$Cursor->[1]<$Canvas->{sz_y}-2;
 
   $Update_Cursor=1;
 
@@ -163,7 +184,7 @@ sub cursor_left() {
 };
 
 sub cursor_right() {
-  $Cursor->[0]+=$Cursor->[0]<$ttysz[0];
+  $Cursor->[0]+=$Cursor->[0]<$Canvas->{sz_x};
   $Update_Cursor=1;
 
 };
@@ -191,6 +212,8 @@ Lycon::Ctl::register_events(
 
 );
 
+# ---   *   ---   *   ---
+
 Lycon::Kbd::nit();
 Lycon::Loop::set_quit(sub {
 
@@ -199,6 +222,9 @@ Lycon::Loop::set_quit(sub {
 });
 
 Lycon::Clk::nit();
+
+# ---   *   ---   *   ---
+
 Lycon::Loop::set_logic(sub {
 
   $Update_Screen|=($Scroll_Y!=0) || $Update_Cursor;
@@ -215,36 +241,54 @@ Lycon::Loop::set_logic(sub {
 
   };
 
+# ---   *   ---   *   ---
+
   Lycon::Loop::dwbuff(
 
-    "\e[?25l$screen".
+    q[$:gd_encur 0;>].
+
+    $screen.
+
+    q[$:gd_mvcur
+
+      $O{gd}->{-canvas}->{sz_y}+1,1
+
+    ;>].
+
+    q[$:gd_cline;>].
+    q[$:gd_color 0x70;>].
 
     # status bar
     (sprintf
 
-      "\e[%i;1H\e[2K\e[7m%lc ".
-      "%i/%i %i\e[0m",
+      "%lc %i/%i %i",
 
-      $ttysz[1],
       Lycon::clkdr(),
 
-      $Cursor->[1],$ttysz[1],$Y_Offset,
+      $Cursor->[1],
+      $Canvas->{sz_y},$Y_Offset,
 
     ).
 
+    q[$:gd_color 0x07;>].
+
     # cursor
-    (sprintf "\e[%i;%iH\e[?25h",
+    q[$:gd_mvcur
 
-      $Cursor->[1]+1,
-      $Cursor->[0]+1
+      $O{gd}->{-cursor}->[1]+1,
+      $O{gd}->{-cursor}->[0]+1,
 
-    )
+    ;>].
+
+    q[$:gd_encur 1;>]
 
   );
 
   $Update_Screen=0;
 
 },[]);
+
+# ---   *   ---   *   ---
 
 Lycon::Kbd::swap_to();
 
