@@ -51,7 +51,7 @@ package Lycon::Kbd;
 # global state
 
   my @Keys=();
-  my %Keys=();
+  our %Keys=();
 
   my @SwKeys=();
   my %KeyIDs=();
@@ -231,21 +231,20 @@ sub nit() {
   # ^get keydata for all
   for my $mod(values %{$modules}) {
 
-    my @ids=array_keys($mod->{kbd});
-    my @keys=array_values($mod->{kbd});
+    my @names=array_keys($mod->{kbd});
 
     # check that reserved keys are mapped
-    while(@ids && @keys) {
+    while(@names) {
 
-      my $id=shift @ids;
-      my $key=shift @keys;
+      my $name=shift @names;
+      my $id=Genks::KI($name);
 
       # set blank callbacks if reserved && unused
       if(!exists $KeyIDs{$id}) {
 
         define(
 
-          $key,$id,
+          $name,$id,
 
           $NULLSTR,
           $NULLSTR,
@@ -263,6 +262,7 @@ sub nit() {
 # register the events
 
   %Keys=@Keys;
+
   my @ntargs=Genks::pl_keymap(\@Keys,\%Keys);
 
   Lycon::keynt(@ntargs);
@@ -276,6 +276,8 @@ sub nit() {
 # load defined callbacks
 
 sub ldkeys() {
+
+my %shit=reverse %Keys;
 
   for(my $x=1;$x<@Keys;$x+=2) {
 
@@ -332,8 +334,10 @@ sub swap_to($pkg=undef) {
 
   while(@keys && @values) {
 
-    my $id=shift @keys;
+    my $name=shift @keys;
     my $calls=shift @values;
+
+    my $id=Genks::KI($name);
 
     my $k_data=sv_by_id($id);
 

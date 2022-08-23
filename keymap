@@ -43,22 +43,22 @@
   Genks::process_keymap(
 
     # keychars file
-    'ce/keys/ti',
+    'ce/keys/ti',0,
 
     # quick exit for testing
-    'ESC' ,['escape','','','dpycl();exit(0);'],
+    ESC=>['escape','','','dpycl();exit(0);'],
 
     # modifiers
-    'LALT',['LAlt','','',''],
-    'RALT',['RAlt','','',''],
-    'LSHIFT',['LShift','','',''],
+    LALT=>['LAlt','','',''],
+    RALT=>['RAlt','','',''],
+    LSHIFT=>['LShift','','',''],
 
     # movement keys
-    'AUP' ,['up','ce/keys/up.k'],
-    'ADWN',['down','ce/keys/down.k'],
-    'ARGT',['right','ce/keys/right.k'],
-    'ALFT',['left','ce/keys/left.k'],
-    'ERET',["ret",'ce/keys/ret.k'],
+    AUP=>['up','ce/keys/up.k'],
+    ADWN=>['down','ce/keys/down.k'],
+    ARGT=>['right','ce/keys/right.k'],
+    ALFT=>['left','ce/keys/left.k'],
+    ERET=>["ret",'ce/keys/ret.k'],
 
   );
 

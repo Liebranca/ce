@@ -37,13 +37,14 @@ package Lycon::Ctl;
 
     keysets=>[
 
-      -EXIT=>['escape'],
-      -ACCEPT=>['ret'],
-      -JUMP=>['space'],
+      -COM=>[qw(escape ret space)],
 
-      -MOV_A=>['up','left','down','right'],
-      -MOV_B=>['w','a','s','d'],
-      -MOV_C=>['i','j','k','l'],
+      -CTL_R=>[qw(RShift RCtrl RAlt)],
+      -CTL_L=>[qw(LShift LCtrl LAlt)],
+
+      -MOV_A=>[qw(up left down right)],
+      -MOV_B=>[qw(w a s d)],
+      -MOV_C=>[qw(i j k l)],
 
     ],
 

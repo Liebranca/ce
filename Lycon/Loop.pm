@@ -114,11 +114,16 @@ sub get_state() {
 # ---   *   ---   *   ---
 # execute the main loop
 
-sub run() {
+sub run(%O) {
 
-  my %ctx=(gd=>$Cache->{gd});
+  # defaults
+  $O{panic}//=600;
 
-  my $panic=600;
+  my $panic=$O{panic};
+  delete $O{panic};
+
+  my %ctx=(gd=>$Cache->{gd},%O);
+
   while(!$Cache->{quit_proc}->()) {
 
     $Cache->{busy}=Lycon::gtevcnt();

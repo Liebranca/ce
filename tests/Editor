@@ -135,7 +135,7 @@ sub highlight_current() {
 
   $Screen_Lines[$curline]=
 
-    q[$:gd_color 0x82;>].
+    q[$:gd_color 0x87;>].
 
     (
 
@@ -193,7 +193,32 @@ sub cursor_right() {
 
 Lycon::Ctl::register_events(
 
-  -EXIT=>[0,0,sub {$Cache->{terminate}=1}],
+  -COM=>[
+
+    # escape
+    0,0,sub {$Cache->{terminate}=1},
+
+    # ret
+    0,0,0,
+
+    #space
+    0,0,0,
+
+  ],
+
+  -CTL_L=>[
+
+    # shift
+    0,0,0,
+
+    # ctrl
+    0,0,0,
+
+    # alt
+    0,0,0,
+
+  ],
+
   -MOV_A=>[
 
     # up
@@ -243,11 +268,13 @@ Lycon::Loop::set_logic(sub {
 
 # ---   *   ---   *   ---
 
+my $ibuff=Lycon::keyibl();
+
   Lycon::Loop::dwbuff(
 
     q[$:gd_encur 0;>].
 
-    $screen.
+    $ibuff.
 
     q[$:gd_mvcur
 
@@ -293,7 +320,7 @@ Lycon::Loop::set_logic(sub {
 Lycon::Kbd::swap_to();
 
 Lycon::Dpy::beg();
-Lycon::Loop::run();
+Lycon::Loop::run(panic=>6000);
 Lycon::Dpy::end();
 
 # ---   *   ---   *   ---

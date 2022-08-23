@@ -24,6 +24,8 @@ package Genks;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
+
+  use Arstd::Array;
   use Arstd::IO;
 
   use Chk;
@@ -63,6 +65,7 @@ sub parse_kbdlay {
   my @layi=();
 
   while(@lines) {
+
     my $line=shift @lines;
     if(!$line || (index $line,'#')==0) {
       next;
@@ -73,13 +76,17 @@ sub parse_kbdlay {
       $line.="$i";
       $line.=" $line";
 
-    };my ($ar_name,$X11_name)=split ' ',$line;
-    if(!$ar_name) {$ar_name="$i";};
+    };
+
+    my ($ar_name,$X11_name)=split ' ',$line;
+    if(!$ar_name) {$ar_name="$i"};
 
     $kbdlay{$ar_name}=$i;$i++;
     push @layi,$ar_name;
 
-  };$Cache{-LAYOUT_I}=\@layi;
+  };
+
+  $Cache{-LAYOUT_I}=\@layi;
   return \%kbdlay;
 
 };
@@ -123,15 +130,40 @@ sub rdkfile {
 # ---   *   ---   *   ---
 # read glyph table
 
-sub tifunc {
-  my ($lc,$uc,$mr)=@_;
+sub tifunc($pl,$lc,$uc,$mr) {
+
+  my $s=$NULLSTR;
+
+# generate pl sub
+if($pl) {
+
+  $s=sub {
+
+    for my $c($lc,$uc,$mr) {
+      $c=ord($c);
+
+    };
+
+    Lycon::keycool();
+    my @ar=($lc,$uc,$mr);
+
+    Lycon::keyibs($ar[
+      (Lycon::keyhel($Lycon::Kbd::Keys{LShift}))
+    + (Lycon::keyhel($Lycon::Kbd::Keys{RAlt})<<1)
+
+    ]);
+
+  };
+
+# generate c func
+} else {
 
   for my $c($lc,$uc,$mr) {
     $c=sprintf "\\x%02X",ord($c);
 
   };
 
-  my $s=<<"EOF"
+  $s=<<"EOF"
 
   keycool();
   char table[4]="$lc$uc$mr";
@@ -143,7 +175,8 @@ sub tifunc {
   ]);
 
 EOF
-; return $s;
+
+;};return $s;
 
 };
 
@@ -152,9 +185,8 @@ EOF
 
 # in: path to key-charmap table
 # generates text-input funcs
-sub rdti {
+sub rdti($tifile,$pl=0) {
 
-  my $tifile=shift;
   if(!$tifile) {return ();};
 
   my @table=split "\n",orc($tifile);
@@ -178,7 +210,7 @@ sub rdti {
 
     };
 
-    my $onDown=tifunc($lc,$uc,$mr);
+    my $onDown=tifunc($pl,$lc,$uc,$mr);
 
     push @map,$fullname;
     push @map,[KI($name),
@@ -186,14 +218,16 @@ sub rdti {
 
     ];
 
-  };return @map;
+  };
+
+  return @map;
 
 };
 
 # ---   *   ---   *   ---
 # reads user-defined keymap
 
-sub process_keymap($tifile,@KEYMAP) {
+sub process_keymap($tifile,$pl,@KEYMAP) {
 
   if(length $tifile) {
     $tifile=Shb7::file($tifile);
@@ -202,12 +236,18 @@ sub process_keymap($tifile,@KEYMAP) {
 
 # ---   *   ---   *   ---
 
-  # walk through keymap
-  for(my $i=0;$i<@KEYMAP;$i+=2) {
+  my @names=array_keys(\@KEYMAP);
+  my @values=array_values(\@KEYMAP);
 
-    # do keyname translation
-    my $ar=$KEYMAP[$i+1];
-    $ar->[0]=KI($ar->[0]);
+  # walk through keymap
+  while(@names && @values) {
+
+    my $name=shift @names;
+    my $ar=shift @values;
+
+    # attempt keyname translation
+    my $t=KI($ar->[0]);
+    $ar->[0]=$t if defined $t;
 
     my $f=Shb7::file($ar->[1]);
 
@@ -233,17 +273,19 @@ sub process_keymap($tifile,@KEYMAP) {
   $Cache{-NON_TI}=int((@KEYMAP)/2);
 
   # read text-input config
-  push @KEYMAP,rdti($tifile);
+  push @KEYMAP,rdti($tifile,$pl);
   $Cache{-KEYMAP}=\@KEYMAP;
 
 };
 
 # ---   *   ---   *   ---
 
-sub pl_keymap($src,$dst) {
+sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
 
-  process_keymap(q{},@$src);
+  process_keymap('ce/keys/ti',1,@$src);
   my @KEYMAP=@{ $Cache{-KEYMAP} };
+
+  @$src=@KEYMAP;
 
 # ---   *   ---   *   ---
 
