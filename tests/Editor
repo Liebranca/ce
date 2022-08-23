@@ -194,35 +194,56 @@ sub restore_current() {
 
 # ---   *   ---   *   ---
 
-sub cursor_up() {
+sub cursor_up(%O) {
+
+  $O{n}//=1;
+
   $Scroll_Y-=$Cursor->[1]==0;
-  $Cursor->[1]-=$Cursor->[1]>0;
+  $Cursor->[1]-=$O{n}*($Cursor->[1]>0);
 
   $Update_Cursor=1;
 
 };
 
-sub cursor_down() {
+sub cursor_down(%O) {
+
+  $O{n}//=1;
+
   $Scroll_Y+=$Cursor->[1]>=$Canvas->{sz_y}-2;
-  $Cursor->[1]+=$Cursor->[1]<$Canvas->{sz_y}-2;
+  $Cursor->[1]+=$O{n}*(
+    $Cursor->[1]<$Canvas->{sz_y}-2
+
+  );
 
   $Update_Cursor=1;
 
 };
 
-sub cursor_left() {
-  $Cursor->[0]-=$Cursor->[0]>0;
+sub cursor_left(%O) {
+
+  $O{n}//=1;
+
+  $Cursor->[0]-=$O{n}*($Cursor->[0]>0);
   $Update_Cursor=1;
 
 };
 
-sub cursor_right() {
-  $Cursor->[0]+=$Cursor->[0]<$Canvas->{sz_x};
+sub cursor_right(%O) {
+
+  $O{n}//=1;
+
+  $Cursor->[0]+=$O{n}*(
+    $Cursor->[0]<$Canvas->{sz_x}
+
+  );
+
   $Update_Cursor=1;
 
 };
 
 # ---   *   ---   *   ---
+
+sub space() {ti(q{ })};
 
 sub backspace() {
 
@@ -235,6 +256,47 @@ sub backspace() {
     $Cursor->[0],1,$NULLSTR;
 
   on_scroll();
+
+};
+
+# ---   *   ---   *   ---
+
+sub tab() {
+
+  my $n=$Cursor->[0];
+  $n=2-($n&1);
+
+  my $shf=Lycon::keyhel(
+
+    $Lycon::Kbd::Keys{LShift}
+
+  );
+
+  if($shf) {
+
+    my $pos=$Cursor->[1]+$Y_Offset;
+    $pos=$#File_Lines if $pos>$#File_Lines;
+
+    my $re=qr(^[\s]{0,$n})x;
+    $File_Lines[$pos]=~ s/$re//;
+
+    cursor_left(n=>$n);
+    on_scroll();
+
+    # clear key state
+    # avoids fast repeat
+    Lycon::keycl(
+
+      $Lycon::Kbd::Keys{tab}
+
+    );
+
+  } else {
+
+    ti(q{ } x $n,stay=>1);
+    cursor_right(n=>$n);
+
+  };
 
 };
 
@@ -278,7 +340,61 @@ sub add_new_line() {
 
   );
 
+  $Cursor->[0]=0;
+
+  cursor_down();
   on_scroll();
+
+};
+
+# ---   *   ---   *   ---
+
+sub end_of_line() {
+
+  my $pos=$Cursor->[1]+$Y_Offset;
+  $pos=$#File_Lines if $pos>$#File_Lines;
+
+  my $curline=$File_Lines[$pos];
+
+  $Cursor->[0]=length $curline;
+  $Update_Cursor=1;
+
+};
+
+sub beg_of_line() {
+
+  my $pos=$Cursor->[1]+$Y_Offset;
+  $pos=$#File_Lines if $pos>$#File_Lines;
+
+  my $x=0;
+  my $curline=$File_Lines[$pos];
+
+  $curline=~ m[^(\s+)];
+  $x=length $1 if defined $1;
+  $x=0 if $Cursor->[0] == $x;
+
+  $Cursor->[0]=$x;
+  $Update_Cursor=1;
+
+};
+
+# ---   *   ---   *   ---
+
+sub re_pag() {
+
+  return if !$Y_Offset;
+
+  $Scroll_Y-=$Canvas->{sz_y}-2;
+  $Update_Cursor=1;
+
+};
+
+sub av_pag() {
+
+  return if $Y_Offset>$#File_Lines;
+
+  $Scroll_Y+=$Canvas->{sz_y}-2;
+  $Update_Cursor=1;
 
 };
 
@@ -330,13 +446,32 @@ Lycon::Ctl::register_events(
     \&add_new_line,\&add_new_line,0,
 
     # space
-    0,0,0,
+    \&space,\&space,0,
+
+    # tab
+    \&tab,\&tab,0,
 
     # backspace
     \&backspace,\&backspace,0,
 
     # delete
     \&surp,\&surp,0,
+
+  ],
+
+  -NAV=>[
+
+    # home
+    \&beg_of_line,0,0,
+
+    # end
+    \&end_of_line,0,0,
+
+    # re
+    \&re_pag,\&re_pag,0,
+
+    # av
+    \&av_pag,\&av_pag,0,
 
   ],
 

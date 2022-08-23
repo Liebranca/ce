@@ -37,7 +37,8 @@ package Lycon::Ctl;
 
     keysets=>[
 
-      -COM=>[qw(escape ret space backspace del)],
+      -COM=>[qw(escape ret space tab backspace del)],
+      -NAV=>[qw(home end re av)],
 
       -CTL_R=>[qw(RShift RCtrl RAlt)],
       -CTL_L=>[qw(LShift LCtrl LAlt)],
