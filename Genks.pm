@@ -137,12 +137,12 @@ sub tifunc($pl,$lc,$uc,$mr) {
 # generate pl sub
 if($pl) {
 
+  for my $c($lc,$uc,$mr) {
+    $c=ord($c);
+
+  };
+
   $s=sub {
-
-    for my $c($lc,$uc,$mr) {
-      $c=ord($c);
-
-    };
 
     Lycon::keycool();
     my @ar=($lc,$uc,$mr);

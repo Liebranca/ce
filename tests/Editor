@@ -20,7 +20,9 @@ package main;
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Style;
+
   use Arstd::String;
+  use Arstd::Array;
   use Arstd::IO;
 
   use Lycon;
@@ -124,12 +126,16 @@ sub highlight_current() {
 
   $Curline_Original=$Screen_Lines[$curline];
 
+# ---   *   ---   *   ---
+
   my $diff=
 
-    (length $Curline_Original)
-  - length Peso::Ipret::depesc($Curline_Original)
+  ( length $Screen_Lines[$curline])
 
-  ;
+  - length Peso::Ipret::depesc(
+      $Screen_Lines[$curline]
+
+  );
 
   my $sz=$Canvas->{sz_x}+$diff;
 
@@ -148,7 +154,34 @@ sub highlight_current() {
 
   ;
 
+# ---   *   ---   *   ---
+
+  my $s0=Peso::Ipret::depesc(
+    $Screen_Lines[$curline]
+
+  );
+
+  my $s1=$s0;
+
+  my $c=substr $s1,
+    $Cursor->[0],1;
+
+  $c=
+
+  q[$:gd_color 0x30;>].
+    $c.
+
+  q[$:gd_color 0x87;>]
+
+  ;
+
+  substr $s1,$Cursor->[0],1,$c;
+
+  $Screen_Lines[$curline]=~ s[\Q${s0}][$s1];
+
 };
+
+# ---   *   ---   *   ---
 
 sub restore_current() {
 
@@ -191,6 +224,101 @@ sub cursor_right() {
 
 # ---   *   ---   *   ---
 
+sub backspace() {
+
+  my $curline=$Cursor->[1]+$Y_Offset;
+  $curline=$#File_Lines if $curline>$#File_Lines;
+
+  cursor_left();
+
+  substr $File_Lines[$curline],
+    $Cursor->[0],1,$NULLSTR;
+
+  on_scroll();
+
+};
+
+# ---   *   ---   *   ---
+
+sub surp() {
+
+  my $curline=$Cursor->[1]+$Y_Offset;
+  $curline=$#File_Lines if $curline>$#File_Lines;
+
+  substr $File_Lines[$curline],
+    $Cursor->[0],1,$NULLSTR;
+
+  on_scroll();
+
+};
+
+# ---   *   ---   *   ---
+
+sub add_new_line() {
+
+  ti("\n",stay=>1,refresh=>0);
+
+  my $pos=$Cursor->[1]+$Y_Offset;
+  $pos=$#File_Lines if $pos>$#File_Lines;
+
+  my @ins=split $NEWLINE_RE,$File_Lines[$pos];
+
+  $File_Lines[$pos]=$ins[0];
+
+  array_insert(
+    \@File_Lines,$pos+1,
+
+    $ins[1],$File_Lines[$pos+1]
+
+  );
+
+  @File_Lines=$Canvas->textfit(
+    \@File_Lines,
+    offscreen=>1,
+
+  );
+
+  on_scroll();
+
+};
+
+# ---   *   ---   *   ---
+
+sub ti($ibuff,%O) {
+
+  # defaults
+  $O{stay}//=0;
+  $O{refresh}//=1;
+
+  my $curline=$Cursor->[1]+$Y_Offset;
+  $curline=$#File_Lines if $curline>$#File_Lines;
+
+  my $l=length $File_Lines[$curline];
+
+  if($Cursor->[0]>=$l) {
+
+    my $diff=$Cursor->[0]-$l;
+    my $head=q{ } x $diff;
+
+    $File_Lines[$curline].=$head.$ibuff;
+
+  } else {
+
+    my $tail=substr $File_Lines[$curline],
+      $Cursor->[0],1;
+
+    substr $File_Lines[$curline],
+      $Cursor->[0],1,$ibuff.$tail;
+
+  };
+
+  cursor_right() if !$O{stay};
+  on_scroll() if $O{refresh};
+
+};
+
+# ---   *   ---   *   ---
+
 Lycon::Ctl::register_events(
 
   -COM=>[
@@ -199,14 +327,33 @@ Lycon::Ctl::register_events(
     0,0,sub {$Cache->{terminate}=1},
 
     # ret
+    \&add_new_line,\&add_new_line,0,
+
+    # space
     0,0,0,
 
-    #space
-    0,0,0,
+    # backspace
+    \&backspace,\&backspace,0,
+
+    # delete
+    \&surp,\&surp,0,
 
   ],
 
   -CTL_L=>[
+
+    # shift
+    0,0,0,
+
+    # ctrl
+    0,0,0,
+
+    # alt
+    0,0,0,
+
+  ],
+
+  -CTL_R=>[
 
     # shift
     0,0,0,
@@ -266,15 +413,17 @@ Lycon::Loop::set_logic(sub {
 
   };
 
+  my $curline=$Cursor->[1]+$Y_Offset;
+  $curline=$#File_Lines if $curline>$#File_Lines;
+
 # ---   *   ---   *   ---
 
-my $ibuff=Lycon::keyibl();
+  my $ibuff=Lycon::keyibl();
+  ti($ibuff) if length $ibuff;
 
   Lycon::Loop::dwbuff(
 
-    q[$:gd_encur 0;>].
-
-    $ibuff.
+    $screen.
 
     q[$:gd_mvcur
 
@@ -305,9 +454,7 @@ my $ibuff=Lycon::keyibl();
       $O{gd}->{-cursor}->[1]+1,
       $O{gd}->{-cursor}->[0]+1,
 
-    ;>].
-
-    q[$:gd_encur 1;>]
+    ;>]
 
   );
 
@@ -320,6 +467,9 @@ my $ibuff=Lycon::keyibl();
 Lycon::Kbd::swap_to();
 
 Lycon::Dpy::beg();
+
+Lycon::Loop::dwbuff(q[$:gd_encur 0;>]);
+
 Lycon::Loop::run(panic=>6000);
 Lycon::Dpy::end();
 

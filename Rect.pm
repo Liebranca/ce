@@ -27,6 +27,7 @@ package Rect;
   use Style;
 
   use Arstd::String;
+  use Arstd::Array;
   use Arstd::IO;
 
   use parent 'St';
@@ -162,33 +163,20 @@ sub textfit($self,$lines,%O) {
 
   };
 
+  map {$ARG=$NULLSTR if !defined $ARG} @lines;
+
   my $i=0;
   while($i<@lines && $i<$bot) {
-
-    #if(defined !$lines[$i]) {last};
 
     $lines[$i]=descape($lines[$i]);
     linewrap(\$lines[$i],$line_sz);
 
     if($lines[$i]=~ $line_brk_re) {
 
-      my @head=();
-      my @tail=();
+      my @ins=split m[\n],$lines[$i];
 
-      if($i>0) {
-        @head=@lines[0..$i-1];
-
-      };
-
-      if($i<$#lines) {
-        @tail=@lines[$i+1..$#lines];
-
-      };
-
-      my @insert=split m[\n],$lines[$i];
-
-      @lines=(@head,@insert,@tail);
-      $i+=int(@insert);
+      array_insert(\@lines,$i,@ins);
+      $i+=int(@ins);
 
     } else {$i++};
 
