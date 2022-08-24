@@ -129,6 +129,8 @@ sub apply_escapes($class,$frame) {
 
     ;
 
+    @$escapes=sort {$a->[0]<=>$b->[0]} @$escapes;
+
     for my $e(@$escapes) {
 
       my ($pos,$seq)=@$e;

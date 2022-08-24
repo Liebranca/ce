@@ -135,10 +135,36 @@ sub highlight_current() {
 
   $Screen_Lines->escape_at(
 
-    [0,$Cursor->[1]],
+    [0,$y],
     q[$:gd_color 0x87;>]
 
   );
+
+# ---   *   ---   *   ---
+# selection open
+
+  if(defined $Select_Beg
+  && $Select_Beg->behind_2D($Cursor)) {
+
+    $Screen_Lines->escape_at(
+
+      $Select_Beg,
+      q[$:gd_color 0x53;>]
+
+    );
+
+    # different lines
+    if(!$Select_Beg->behind_1D($Cursor)) {
+      $Screen_Lines->escape_at(
+
+        [0,$y],
+        q[$:gd_color 0x53;>]
+
+      );
+
+    };
+
+  };
 
 # ---   *   ---   *   ---
 # draw cursor
@@ -150,32 +176,74 @@ sub highlight_current() {
 
   );
 
-  $Screen_Lines->escape_at(
+# ---   *   ---   *   ---
+# selection close
 
-    $Cursor->offset(1),
-    q[$:gd_color 0x87;>],
+  if(defined $Select_Beg
+  && $Cursor->behind_2D($Select_Beg)) {
 
-  );
+    # same line
+    if($Cursor->behind_1D($Select_Beg)) {
+
+      $Screen_Lines->escape_at(
+
+        $Cursor->offset(1),
+        q[$:gd_color 0x53;>],
+
+      );
+
+      $Screen_Lines->escape_at(
+
+        $Select_Beg,
+        q[$:gd_color 0x87;>]
+
+      );
+
+      $Screen_Lines->escape_at(
+
+        [$Canvas->{sz_x},$Select_Beg->[1]],
+        q[$:gd_color 0x07;>],
+
+      );
+
+    } else {
+
+      $Screen_Lines->escape_at(
+
+        $Cursor->offset(1),
+        q[$:gd_color 0x53;>]
+
+      );
+
+      $Screen_Lines->escape_at(
+
+        $Select_Beg,
+        q[$:gd_color 0x07;>]
+
+      );
+
+    };
 
 # ---   *   ---   *   ---
-# close
+# line close
 
-  $Screen_Lines->escape_at(
+  } else {
 
-    [$Canvas->{sz_x},$Cursor->[1]],
-    q[$:gd_color 0x07;>],
+    $Screen_Lines->escape_at(
 
-  );
+      $Cursor->offset(1),
+      q[$:gd_color 0x87;>],
 
-# ---   *   ---   *   ---
+    );
 
-#  if(defined $Select_Beg) {
-#    color_at_pos(0x17,$Select_Beg->offset(-1));
-#
-#  };
+    $Screen_Lines->escape_at(
 
-#  color_at_pos(0x30,$Cursor);
-#  color_at_pos(0x07,$Cursor->offset(1));
+      [$Canvas->{sz_x},$y],
+      q[$:gd_color 0x07;>],
+
+    );
+
+  };
 
 };
 
@@ -188,7 +256,20 @@ sub restore_current() {
   my $y=$Cursor->[1];
   $y=$Canvas->{sz_y} if $y>$Canvas->{sz_y};
 
-  $Screen_Lines->descape($y,$re);
+  my @selected=($y);
+
+  if(defined $Select_Beg) {
+    @selected=($Select_Beg->[1],$y);
+    @selected=sort {$a<=>$b} @selected;
+
+    @selected=($selected[0]..$selected[1]);
+
+  };
+
+  for $y(@selected) {
+    $Screen_Lines->descape($y,$re);
+
+  };
 
 };
 
@@ -436,16 +517,7 @@ sub ti($ibuff,%O) {
 # ---   *   ---   *   ---
 
 sub beg_selection() {
-  $Select_Beg=$Cursor
-
-};
-
-sub end_selection() {
-  $Select_Beg=undef;
-
-};
-
-sub selecting() {
+  $Select_Beg=$Cursor->offset(0);
 
 };
 
@@ -494,7 +566,7 @@ Lycon::Ctl::register_events(
   -CTL_L=>[
 
     # shift
-    \&beg_selection,\&selecting,\&end_selection,
+    \&beg_selection,0,0,
 
     # ctrl
     0,0,0,
@@ -568,6 +640,11 @@ Lycon::Loop::set_logic(sub {
   my $screen=$NULLSTR;
   if($Update_Screen) {
 
+    if($Update_Cursor && !keyhel('LShift')) {
+      $Select_Beg=undef;
+
+    };
+
     highlight_current();
     $screen=$Screen_Lines->flat();
 
@@ -621,6 +698,7 @@ Lycon::Loop::set_logic(sub {
   );
 
   $Update_Screen=0;
+  $Update_Cursor=0;
 
 },[]);
 

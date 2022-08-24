@@ -121,12 +121,26 @@ sub clamp_step($self,$other,$by=1) {
 
 # ---   *   ---   *   ---
 
-sub behind_2D($self,$other) {
-
+sub behind_1D($self,$other) {
   return ($self->[0] < $other->[0])
-  || ($self->[1] < $other->[1]);
+  && ($self->[1] == $other->[1]);
 
 };
+
+sub behind_2D($self,$other) {
+
+  return
+
+     (  ($self->[0] < $other->[0])
+     && ($self->[1] <= $other->[1]) )
+
+  || ($self->[1] < $other->[1])
+
+  ;
+
+};
+
+# ---   *   ---   *   ---
 
 sub offset($self,@by) {
 
