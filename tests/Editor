@@ -50,6 +50,7 @@ my $Scroll_Y=0;
 my $Y_Offset=0;
 
 my $Select_Beg=undef;
+my $Select_Visible=undef;
 
 # ---   *   ---   *   ---
 
@@ -79,10 +80,22 @@ my $Screen_Lines=GF::Text->new_frame(
 
 );
 
+# ---   *   ---   *   ---
+
 sub on_scroll() {
 
   $Y_Offset+=$Scroll_Y;
-  $Y_Offset*=0+(($Y_Offset>=0));
+
+  if($Y_Offset<0) {
+    $Y_Offset=$Scroll_Y=0
+
+  } elsif($Y_Offset>$#File_Lines) {
+    $Scroll_Y=0;
+    $Y_Offset=$#File_Lines;
+
+  };
+
+# ---   *   ---   *   ---
 
   my $beg=$Y_Offset;
   my $end=$Y_Offset+$Canvas->{sz_y}-1;
@@ -99,6 +112,8 @@ sub on_scroll() {
     push @slice,($NULLSTR) x $diff;
 
   };
+
+# ---   *   ---   *   ---
 
   my $i=1;map {
 
@@ -117,6 +132,11 @@ sub on_scroll() {
 
   } @slice;
 
+  if(defined $Select_Beg) {
+    $Select_Visible->[1]-=$Scroll_Y;
+
+  };
+
   $Scroll_Y=0;
 
 };
@@ -125,10 +145,51 @@ on_scroll();
 
 # ---   *   ---   *   ---
 
+sub get_visible_selection() {
+
+  my $sel=$Select_Visible;
+  my $beg=$Select_Beg;
+
+  if(defined $sel) {
+
+    my $beg_visible=
+       $beg->[1]>=$Y_Offset
+    && $beg->[1]<=$Y_Offset+$Canvas->{sz_y}
+
+    ;
+
+    if($beg_visible) {
+      $sel->[0]=$Select_Beg->[0];
+
+    };
+
+    $sel->[1]=$beg->[1]-$Y_Offset;
+
+    if($sel->[1]<0) {
+      $sel->[0]=0;
+      $sel->[1]=0;
+
+    } elsif($sel->[1] > $Canvas->{sz_y}) {
+      $sel->[0]=$Canvas->{sz_x};
+      $sel->[1]=$Canvas->{sz_y};
+
+    };
+
+  };
+
+  return $sel;
+
+};
+
+# ---   *   ---   *   ---
+
 sub highlight_current() {
 
   my $y=$Cursor->[1];
   $y=$Canvas->{sz_y} if $y>$Canvas->{sz_y};
+
+  my $sel=get_visible_selection();
+
 
 # ---   *   ---   *   ---
 # whole of current line
@@ -143,18 +204,18 @@ sub highlight_current() {
 # ---   *   ---   *   ---
 # selection open
 
-  if(defined $Select_Beg
-  && $Select_Beg->behind_2D($Cursor)) {
+  if(defined $sel
+  && $sel->behind_2D($Cursor)) {
 
     $Screen_Lines->escape_at(
 
-      $Select_Beg,
+      $sel,
       q[$:gd_color 0x53;>]
 
     );
 
     # different lines
-    if(!$Select_Beg->behind_1D($Cursor)) {
+    if(!$sel->behind_1D($Cursor)) {
       $Screen_Lines->escape_at(
 
         [0,$y],
@@ -179,11 +240,11 @@ sub highlight_current() {
 # ---   *   ---   *   ---
 # selection close
 
-  if(defined $Select_Beg
-  && $Cursor->behind_2D($Select_Beg)) {
+  if(defined $sel
+  && $Cursor->behind_2D($sel)) {
 
     # same line
-    if($Cursor->behind_1D($Select_Beg)) {
+    if($Cursor->behind_1D($sel)) {
 
       $Screen_Lines->escape_at(
 
@@ -194,14 +255,14 @@ sub highlight_current() {
 
       $Screen_Lines->escape_at(
 
-        $Select_Beg,
+        $sel,
         q[$:gd_color 0x87;>]
 
       );
 
       $Screen_Lines->escape_at(
 
-        [$Canvas->{sz_x},$Select_Beg->[1]],
+        [$Canvas->{sz_x},$sel->[1]],
         q[$:gd_color 0x07;>],
 
       );
@@ -217,7 +278,7 @@ sub highlight_current() {
 
       $Screen_Lines->escape_at(
 
-        $Select_Beg,
+        $sel,
         q[$:gd_color 0x07;>]
 
       );
@@ -257,9 +318,10 @@ sub restore_current() {
   $y=$Canvas->{sz_y} if $y>$Canvas->{sz_y};
 
   my @selected=($y);
+  my $sel=get_visible_selection();
 
-  if(defined $Select_Beg) {
-    @selected=($Select_Beg->[1],$y);
+  if(defined $sel) {
+    @selected=($sel->[1],$y);
     @selected=sort {$a<=>$b} @selected;
 
     @selected=($selected[0]..$selected[1]);
@@ -517,7 +579,8 @@ sub ti($ibuff,%O) {
 # ---   *   ---   *   ---
 
 sub beg_selection() {
-  $Select_Beg=$Cursor->offset(0);
+  $Select_Beg=$Cursor->offset(0,$Y_Offset);
+  $Select_Visible=$Cursor->offset(0);
 
 };
 
@@ -642,6 +705,7 @@ Lycon::Loop::set_logic(sub {
 
     if($Update_Cursor && !keyhel('LShift')) {
       $Select_Beg=undef;
+      $Select_Visible=undef;
 
     };
 
@@ -652,8 +716,22 @@ Lycon::Loop::set_logic(sub {
 
   };
 
+# ---   *   ---   *   ---
+
   my $curline=$Cursor->[1]+$Y_Offset;
   $curline=$#File_Lines if $curline>$#File_Lines;
+
+  my $sel=$Select_Beg;
+  $sel=[0,0] if !defined $sel;
+
+  my $status=sprintf "%lc C:%i/%i O:%i",
+
+    Lycon::clkdr(),
+
+    $Cursor->[1],$Canvas->{sz_y},
+    $Y_Offset,
+
+  ;
 
 # ---   *   ---   *   ---
 
@@ -674,26 +752,9 @@ Lycon::Loop::set_logic(sub {
     q[$:gd_color 0x70;>].
 
     # status bar
-    (sprintf
+    (sprintf "%-$Canvas->{sz_x}s",$status).
 
-      "%lc %i/%i %i",
-
-      Lycon::clkdr(),
-
-      $Cursor->[1],
-      $Canvas->{sz_y},$Y_Offset,
-
-    ).
-
-    q[$:gd_color 0x07;>].
-
-    # cursor
-    q[$:gd_mvcur
-
-      $O{gd}->{-cursor}->[1]+1,
-      $O{gd}->{-cursor}->[0]+1,
-
-    ;>]
+    q[$:gd_color 0x07;>]
 
   );
 
