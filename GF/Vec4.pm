@@ -159,4 +159,27 @@ sub offset($self,@by) {
 };
 
 # ---   *   ---   *   ---
+
+sub least($self,$other) {
+
+  return ($self,$other) if $self->behind_2D($other);
+  return ($other,$self);
+
+};
+
+sub over($self,$other) {
+
+  my $out=0;
+  my $i=0;
+
+  for my $i(0..@$self-1) {
+    $out|=$self->[$i]!=$other->[$i]
+
+  };
+
+  return $out;
+
+};
+
+# ---   *   ---   *   ---
 1; # ret

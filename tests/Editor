@@ -87,7 +87,7 @@ sub on_scroll() {
   $Y_Offset+=$Scroll_Y;
 
   if($Y_Offset<0) {
-    $Y_Offset=$Scroll_Y=0
+    $Y_Offset=$Scroll_Y=0;
 
   } elsif($Y_Offset>$#File_Lines) {
     $Scroll_Y=0;
@@ -99,6 +99,8 @@ sub on_scroll() {
 
   my $beg=$Y_Offset;
   my $end=$Y_Offset+$Canvas->{sz_y}-1;
+
+  if(!@File_Lines) {push @File_Lines,$NULLSTR};
 
   for my $x($beg,$end) {
     if($x>$#File_Lines) {$x=$#File_Lines};
@@ -142,6 +144,21 @@ sub on_scroll() {
 };
 
 on_scroll();
+
+# ---   *   ---   *   ---
+
+sub line_clamp($x,$y,$sz) {
+
+  $y=$#File_Lines if $y>$#File_Lines;
+
+  my $len=length $File_Lines[$y];
+
+  $x=$len if $x>$len;
+  $sz=$len if $sz>$len;
+
+  return ($x,$y,$sz);
+
+};
 
 # ---   *   ---   *   ---
 
@@ -337,6 +354,21 @@ sub restore_current() {
 
 # ---   *   ---   *   ---
 
+sub cursor_set($x,$y) {
+
+  $x*=0+($x>0);
+  $y*=0+($y>0);
+
+  $x=$Canvas->{sz_x} if $x>$Canvas->{sz_x};
+  $y=$Canvas->{sz_y} if $x>$Canvas->{sz_y};
+
+  @$Cursor=($x,$y);
+  $Update_Cursor=1;
+
+};
+
+# ---   *   ---   *   ---
+
 sub cursor_up(%O) {
 
   $O{n}//=1;
@@ -354,7 +386,7 @@ sub cursor_down(%O) {
 
   $Scroll_Y+=$Cursor->[1]>=$Canvas->{sz_y}-2;
   $Cursor->[1]+=$O{n}*(
-    $Cursor->[1]<$Canvas->{sz_y}-2
+    $Cursor->[1]<($Canvas->{sz_y}-2)
 
   );
 
@@ -376,7 +408,7 @@ sub cursor_right(%O) {
   $O{n}//=1;
 
   $Cursor->[0]+=$O{n}*(
-    $Cursor->[0]<$Canvas->{sz_x}
+    $Cursor->[0]<($Canvas->{sz_x})
 
   );
 
@@ -447,11 +479,140 @@ sub tab() {
 
 sub surp() {
 
-  my $curline=$Cursor->[1]+$Y_Offset;
-  $curline=$#File_Lines if $curline>$#File_Lines;
+  my $c=$Cursor->offset(0,$Y_Offset);
+  my ($x,$y,$sz)=($c->[0],$c->[1],1);
 
-  substr $File_Lines[$curline],
-    $Cursor->[0],1,$NULLSTR;
+  ($x,$y,$sz)=line_clamp($x,$y,$sz);
+  my @selected=([$x,$y,$sz]);
+
+# ---   *   ---   *   ---
+
+  my $sel=$Select_Beg;
+
+  if(defined $sel) {
+
+    my ($beg,$end)=$c->least($sel);
+    if($beg->[1] == $end->[1]) {
+
+      my ($x,$y,$sz)=(
+        $beg->[0],$beg->[1],
+        $end->[0]-$beg->[0]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      @selected=([$x,$y,$sz]);
+
+# ---   *   ---   *   ---
+
+    } else {
+
+      ($x,$y,$sz)=(
+        $beg->[0],$beg->[1],
+        $Canvas->{sz_x}-$beg->[1]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      @selected=([$x,$y,$sz]);
+
+      for $y($beg->[1]+1..$end->[1]) {
+      last if $y==$end->[1];
+
+        my ($x,$sz)=(0,$Canvas->{sz_x});
+
+        ($x,$y,$sz)=line_clamp($x,$y,$sz);
+        push @selected,[0,$y,$sz];
+
+      };
+
+      ($x,$y,$sz)=(
+        0,$end->[1],$end->[0]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      push @selected,[$x,$y,$sz];
+
+    };
+
+# ---   *   ---   *   ---
+
+  };
+
+  my $pop_nl=undef;
+
+  for my $ar(@selected) {
+
+    ($x,$y,$sz)=@$ar;
+    my ($first,$last)=(
+
+      $ar==$selected[ 0],
+      $ar==$selected[-1]
+
+    );
+
+    substr $File_Lines[$y],
+      $x,$sz,$NULLSTR;
+
+# ---   *   ---   *   ---
+
+    my $x_at_eol=(
+      $x>=length $File_Lines[$y]
+
+    )
+
+    && $y<$#File_Lines
+    && ($first || $last)
+
+    ;
+
+    if($x_at_eol) {
+
+      if($last) {
+        $File_Lines[$y].=$File_Lines[$y+1];
+        $File_Lines[$y+1]=undef;
+
+      } elsif(@selected>1) {
+        $pop_nl=$y;
+
+      };
+
+    } elsif(!length $File_Lines[$y]) {
+      $File_Lines[$y]=undef;
+
+    };
+
+# ---   *   ---   *   ---
+
+  };
+
+  array_filter(\@File_Lines,
+    sub($s) {return defined $s}
+
+  );
+
+  if(defined $pop_nl && $pop_nl<$#File_Lines) {
+
+    $y=$pop_nl;
+
+    $File_Lines[$y].=$File_Lines[$y+1];
+    $File_Lines[$y+1]=undef;
+
+    array_filter(\@File_Lines,
+      sub($s) {return defined $s}
+
+    );
+
+  };
+
+# ---   *   ---   *   ---
+
+  cursor_set(
+    $selected[0]->[0],
+    $selected[0]->[1],
+
+  );
 
   on_scroll();
 
@@ -571,7 +732,10 @@ sub ti($ibuff,%O) {
 
   };
 
-  cursor_right() if !$O{stay};
+  $Select_Beg=undef;
+  $Select_Visible=undef;
+
+  cursor_right(n=>length $ibuff) if !$O{stay};
   on_scroll() if $O{refresh};
 
 };
@@ -696,6 +860,9 @@ Lycon::Loop::set_logic(sub {
 
 # ---   *   ---   *   ---
 
+  my $ibuff=Lycon::keyibl();
+  ti($ibuff) if length $ibuff;
+
   $Update_Screen|=($Scroll_Y!=0) || $Update_Cursor;
 
   on_scroll() if $Scroll_Y;
@@ -734,9 +901,6 @@ Lycon::Loop::set_logic(sub {
   ;
 
 # ---   *   ---   *   ---
-
-  my $ibuff=Lycon::keyibl();
-  ti($ibuff) if length $ibuff;
 
   Lycon::Loop::dwbuff(
 

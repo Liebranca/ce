@@ -22,9 +22,13 @@ x Open and display
 x Navigation
 x Enable TI keys
 
-~ Modifiers on TI keys -- or key combinations in general
-~ ^ Selecting text
-~ ^^ Multi-line
+~ Silly thing: cap the cursor to the screen
+
+x Modifiers on TI keys -- or key combinations in general
+x ^ Selecting text
+x ^^ Affecting selection
+
+~ ^ Multi-line edit
 
 ~ ^ Undo
 ~ ^ Copy
