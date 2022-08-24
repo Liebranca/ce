@@ -12,7 +12,7 @@
 # ---   *   ---   *   ---
 
 # deps
-package Line;
+package GF::Line;
 
   use v5.36.0;
   use strict;
@@ -28,7 +28,7 @@ package Line;
   use parent 'St';
 
   use lib $ENV{'ARPATH'}.'/lib/';
-  use Vec4;
+  use GF::Vec4;
 
 # ---   *   ---   *   ---
 # constructor
@@ -38,8 +38,8 @@ sub nit($class,$a,$b) {
   # process inputs
   for my $co($a,$b) {
 
-    $co=Vec4->nit(@$co)
-    unless Vec4->is_valid($co);
+    $co=GF::Vec4->nit(@$co)
+    unless GF::Vec4->is_valid($co);
 
   };
 
@@ -72,7 +72,7 @@ sub get_range($self) {
     $x+=$x_step;
     $y+=$y_step;
 
-    push @pts,Vec4->nit($x,$y);
+    push @pts,GF::Vec4->nit($x,$y);
 
   };
 

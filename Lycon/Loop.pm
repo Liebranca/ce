@@ -83,7 +83,7 @@ sub graphics($driver_name=undef) {
   if(defined $driver_name) {
 
     $Cache->{gd}=eval(
-      q[Graphics::].
+      q[GF::Mode::].
       $driver_name.
 
       q[->new_frame()]
@@ -122,7 +122,7 @@ sub run(%O) {
   my $panic=$O{panic};
   delete $O{panic};
 
-  my %ctx=(gd=>$Cache->{gd},%O);
+  my %ctx=(%O);
 
   while(!$Cache->{quit_proc}->()) {
 

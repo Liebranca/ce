@@ -9,17 +9,35 @@
   use strict;
   use warnings;
 
-  use lib $ENV{'ARPATH'}.'/ce/';
-  use Vec4;
-  use Line;
-  use Rect;
+  use lib $ENV{'ARPATH'}.'/lib/';
+
+  use Lycon;
+  use GF::Mode::ANSI;
+
+  use GF::Rect;
 
 # ---   *   ---   *   ---
 
-my $rect=Rect->nit('30x30',40);
+my @ttysz=(0,0);Lycon::ttysz(\@ttysz);
 
-$rect->draw();
-$rect->textfit(q{Hello there!}x64);
+my $G=GF::Mode::ANSI->new_frame();
+$G->nit(0,@ttysz);
+
+# ---   *   ---   *   ---
+
+my $rect=GF::Rect->nit('20x30',pos_x=>30);
+
+my @lines=$rect->textfit(
+  [q{Hello there!}x64]
+
+);
+
+$rect->text_update(\@lines);
+
+print "\e[2J";
+
+$G->{-buff}.=join q{},@lines;
+$G->draw();
 
 # ---   *   ---   *   ---
 1; # ret

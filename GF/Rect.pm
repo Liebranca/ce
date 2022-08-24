@@ -13,7 +13,7 @@
 # ---   *   ---   *   ---
 
 # deps
-package Rect;
+package GF::Rect;
 
   use v5.36.0;
   use strict;
@@ -33,8 +33,8 @@ package Rect;
   use parent 'St';
 
   use lib $ENV{'ARPATH'}.'/lib/';
-  use Vec4;
-  use Line;
+  use GF::Vec4;
+  use GF::Line;
 
 # ---   *   ---   *   ---
 # constructor
@@ -58,11 +58,25 @@ sub nit(
 
   my %pts=(
 
-    top_l=>Vec4->nit($O{pos_x},$O{pos_y}),
-    top_r=>Vec4->nit($O{pos_x}+$sz_x,$O{pos_y}),
+    top_l=>GF::Vec4->nit(
+      $O{pos_x},$O{pos_y}
 
-    bot_l=>Vec4->nit($O{pos_x},$O{pos_y}+$sz_y),
-    bot_r=>Vec4->nit($O{pos_x}+$sz_x,$O{pos_y}+$sz_y),
+    ),
+
+    top_r=>GF::Vec4->nit(
+      $O{pos_x}+$sz_x,$O{pos_y}
+
+    ),
+
+    bot_l=>GF::Vec4->nit(
+      $O{pos_x},$O{pos_y}+$sz_y
+
+    ),
+
+    bot_r=>GF::Vec4->nit(
+      $O{pos_x}+$sz_x,$O{pos_y}+$sz_y
+
+    ),
 
   );
 
@@ -81,25 +95,25 @@ sub nit(
     bot_l=>$pts{bot_l},
     bot_r=>$pts{bot_r},
 
-    ege_u=>Line->nit(
+    ege_u=>GF::Line->nit(
       $pts{top_l},
       $pts{top_r},
 
     ),
 
-    ege_l=>Line->nit(
+    ege_l=>GF::Line->nit(
       $pts{top_l},
       $pts{bot_l},
 
     ),
 
-    ege_d=>Line->nit(
+    ege_d=>GF::Line->nit(
       $pts{bot_l},
       $pts{bot_r},
 
     ),
 
-    ege_r=>Line->nit(
+    ege_r=>GF::Line->nit(
       $pts{bot_r},
       $pts{top_r},
 
@@ -123,18 +137,6 @@ sub edges($self) {
     $self->{ege_r},
 
   );
-
-};
-
-# ---   *   ---   *   ---
-
-sub draw($self) {
-
-  for my $line($self->edges) {
-
-    $line->draw();
-
-  };
 
 };
 
@@ -202,6 +204,25 @@ sub textfit($self,$lines,%O) {
   };
 
   return @lines;
+
+};
+
+# ---   *   ---   *   ---
+
+sub text_update($self,$lines) {
+
+  my ($x,$y)=@{$self->{top_l}};
+
+  map {$ARG=
+
+    q[$:gd_mvcur ].
+
+      ($self->{pos_y}+($y++)+1).q{,}.
+      ($self->{pos_x}+$x+1).
+
+    q[;>].$ARG;
+
+  } @$lines;
 
 };
 

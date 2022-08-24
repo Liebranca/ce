@@ -12,7 +12,7 @@
 # ---   *   ---   *   ---
 
 # deps
-package Graphics::ANSI;
+package GF::Mode::ANSI;
 
   use v5.36.0;
   use strict;
@@ -29,8 +29,8 @@ package Graphics::ANSI;
 
   use Peso::Ipret;
 
-  use Rect;
-  use Vec4;
+  use GF::Rect;
+  use GF::Vec4;
 
 # ---   *   ---   *   ---
 # info
@@ -66,19 +66,19 @@ sub nit(
   $class,$frame,
 
   # actual
+  $border,
   $sz_x,$sz_y,
-  $border
 
 ) {
 
-  $frame->{-canvas}=Rect->nit(
+  $frame->{-canvas}=GF::Rect->nit(
 
     "${sz_x}x${sz_y}",
     border=>$border
 
   );
 
-  $frame->{-cursor}=Vec4->nit();
+  $frame->{-cursor}=GF::Vec4->nit();
 
 };
 
@@ -87,6 +87,8 @@ sub nit(
 sub draw($class,$frame,%ctx) {
 
   my $buff=$frame->{-buff};
+
+  $ctx{gd}//=$frame;
 
   Peso::Ipret::pesc(
 

@@ -20,5 +20,15 @@
 *>File editing
 x Open and display
 x Navigation
-~ Enable TI keys
+x Enable TI keys
+
+~ Modifiers on TI keys -- or key combinations in general
+~ ^ Selecting text
+~ ^^ Multi-line
+
+~ ^ Undo
+~ ^ Copy
+~ ^ Paste
+~ ^ Cut
+
 ~ Write

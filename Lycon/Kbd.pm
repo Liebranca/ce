@@ -39,6 +39,22 @@ package Lycon::Kbd;
   use Genks;
 
 # ---   *   ---   *   ---
+# adds to your namespace
+
+  use Exporter 'import';
+  our @EXPORT=qw(
+
+    keytap keyhel keyrel
+
+  );
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION=v5.36.0;
+  our $AUTHOR='IBN-3DILA';
+
+# ---   *   ---   *   ---
 # ROM
 
   Readonly my $E_NOKEY=>
@@ -355,6 +371,23 @@ sub swap_to($pkg=undef) {
 
   ldkeys();
   return @saved_k_data;
+
+};
+
+# ---   *   ---   *   ---
+
+sub keytap($name) {
+  return Lycon::keytap($Keys{$name})
+
+};
+
+sub keyhel($name) {
+  return Lycon::keyhel($Keys{$name})
+
+};
+
+sub keyrel($name) {
+  return Lycon::keyrel($Keys{$name})
 
 };
 

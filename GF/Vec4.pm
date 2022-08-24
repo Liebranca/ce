@@ -12,7 +12,7 @@
 # ---   *   ---   *   ---
 
 # deps
-package Vec4;
+package GF::Vec4;
 
   use v5.36.0;
   use strict;
@@ -116,6 +116,31 @@ sub clamp_step($self,$other,$by=1) {
   };
 
   return @result;
+
+};
+
+# ---   *   ---   *   ---
+
+sub behind_2D($self,$other) {
+
+  return ($self->[0] < $other->[0])
+  || ($self->[1] < $other->[1]);
+
+};
+
+sub offset($self,@by) {
+
+  my $i=0;
+  while($i<@$self) {
+
+    $by[$i]//=0;
+    $by[$i]=$self->[$i]+$by[$i];
+
+    $i++;
+
+  };
+
+  return $self->get_class()->nit(@by);
 
 };
 

@@ -12,10 +12,6 @@ package main;
 
   use English qw(-no_match_vars);
 
-  use lib $ENV{'ARPATH'}.'/ce/';
-
-  use Rect;
-
   use lib $ENV{'ARPATH'}.'/lib/sys/';
   use lib $ENV{'ARPATH'}.'/lib/';
 
@@ -33,7 +29,9 @@ package main;
   use Lycon::Kbd;
   use Lycon::Loop;
 
-  use Graphics::ANSI;
+  use GF::Mode::ANSI;
+  use GF::Rect;
+  use GF::Text;
 
   binmode(STDOUT,':utf8');
 
@@ -51,13 +49,15 @@ my $Update_Cursor=0;
 my $Scroll_Y=0;
 my $Y_Offset=0;
 
+my $Select_Beg=undef;
+
 # ---   *   ---   *   ---
 
 my @ttysz=(0,0);
 Lycon::ttysz(\@ttysz);
 
 my $G=Lycon::Loop::graphics('ANSI');
-$G->nit($ttysz[0],$ttysz[1],0);
+$G->nit(0,@ttysz);
 
 my $Canvas=$G->{-canvas};
 my $Cursor=$G->{-cursor};
@@ -74,7 +74,10 @@ my @File_Lines=split $NEWLINE_RE,$File;
 
 );
 
-my @Screen_Lines=();
+my $Screen_Lines=GF::Text->new_frame(
+  -rect=>$Canvas,
+
+);
 
 sub on_scroll() {
 
@@ -89,25 +92,30 @@ sub on_scroll() {
 
   };
 
-  @Screen_Lines=@File_Lines[$beg..$end];
-  if(@Screen_Lines<$Canvas->{sz_y}) {
-    my $diff=$Canvas->{sz_y}-@Screen_Lines;
-    push @Screen_Lines,($NULLSTR) x $diff;
+  my @slice=@File_Lines[$beg..$end];
+  if(@slice<$Canvas->{sz_y}) {
+
+    my $diff=$Canvas->{sz_y}-@slice;
+    push @slice,($NULLSTR) x $diff;
 
   };
 
   my $i=1;map {
 
-    $ARG=
+    $ARG=$Screen_Lines->nit($ARG,$i-1);
 
-    q[$:gd_mvcur ].$i.q[,1;>].
-    q[$:gd_cline;>].
+    $Screen_Lines->escape_at(
 
-      "$ARG";
+      [0,$i-1],
+
+      q[$:gd_mvcur ].$i.q[,1;>].
+      q[$:gd_cline;>],
+
+    );
 
     $i++;
 
-  } @Screen_Lines;
+  } @slice;
 
   $Scroll_Y=0;
 
@@ -117,67 +125,57 @@ on_scroll();
 
 # ---   *   ---   *   ---
 
-my $Curline_Original=$NULLSTR;
-
 sub highlight_current() {
 
-  my $curline=$Cursor->[1];
-  $curline=$#Screen_Lines if $curline>$#Screen_Lines;
-
-  $Curline_Original=$Screen_Lines[$curline];
+  my $y=$Cursor->[1];
+  $y=$Canvas->{sz_y} if $y>$Canvas->{sz_y};
 
 # ---   *   ---   *   ---
+# whole of current line
 
-  my $diff=
+  $Screen_Lines->escape_at(
 
-  ( length $Screen_Lines[$curline])
-
-  - length Peso::Ipret::depesc(
-      $Screen_Lines[$curline]
+    [0,$Cursor->[1]],
+    q[$:gd_color 0x87;>]
 
   );
 
-  my $sz=$Canvas->{sz_x}+$diff;
-
-  $Screen_Lines[$curline]=
-
-    q[$:gd_color 0x87;>].
-
-    (
-
-    sprintf "%-${sz}s",
-      $Screen_Lines[$curline]
-
-    ).
-
-    q[$:gd_color 0x07;>]
-
-  ;
-
 # ---   *   ---   *   ---
+# draw cursor
 
-  my $s0=Peso::Ipret::depesc(
-    $Screen_Lines[$curline]
+  $Screen_Lines->escape_at(
+
+    $Cursor,
+    q[$:gd_color 0x30;>],
 
   );
 
-  my $s1=$s0;
+  $Screen_Lines->escape_at(
 
-  my $c=substr $s1,
-    $Cursor->[0],1;
+    $Cursor->offset(1),
+    q[$:gd_color 0x87;>],
 
-  $c=
+  );
 
-  q[$:gd_color 0x30;>].
-    $c.
+# ---   *   ---   *   ---
+# close
 
-  q[$:gd_color 0x87;>]
+  $Screen_Lines->escape_at(
 
-  ;
+    [$Canvas->{sz_x},$Cursor->[1]],
+    q[$:gd_color 0x07;>],
 
-  substr $s1,$Cursor->[0],1,$c;
+  );
 
-  $Screen_Lines[$curline]=~ s[\Q${s0}][$s1];
+# ---   *   ---   *   ---
+
+#  if(defined $Select_Beg) {
+#    color_at_pos(0x17,$Select_Beg->offset(-1));
+#
+#  };
+
+#  color_at_pos(0x30,$Cursor);
+#  color_at_pos(0x07,$Cursor->offset(1));
 
 };
 
@@ -185,10 +183,12 @@ sub highlight_current() {
 
 sub restore_current() {
 
-  my $curline=$Cursor->[1];
-  $curline=$#Screen_Lines if $curline>$#Screen_Lines;
+  state $re=qr{^\$\:gd_color}x;
 
-  $Screen_Lines[$curline]=$Curline_Original;
+  my $y=$Cursor->[1];
+  $y=$Canvas->{sz_y} if $y>$Canvas->{sz_y};
+
+  $Screen_Lines->descape($y,$re);
 
 };
 
@@ -435,6 +435,22 @@ sub ti($ibuff,%O) {
 
 # ---   *   ---   *   ---
 
+sub beg_selection() {
+  $Select_Beg=$Cursor
+
+};
+
+sub end_selection() {
+  $Select_Beg=undef;
+
+};
+
+sub selecting() {
+
+};
+
+# ---   *   ---   *   ---
+
 Lycon::Ctl::register_events(
 
   -COM=>[
@@ -478,7 +494,7 @@ Lycon::Ctl::register_events(
   -CTL_L=>[
 
     # shift
-    0,0,0,
+    \&beg_selection,\&selecting,\&end_selection,
 
     # ctrl
     0,0,0,
@@ -534,15 +550,26 @@ Lycon::Clk::nit();
 
 Lycon::Loop::set_logic(sub {
 
+  if(keyhel('LCtrl')) {
+
+    if(keyhel('TIQ')) {
+      $Cache->{terminate}=1;
+
+    };
+
+  };
+
+# ---   *   ---   *   ---
+
   $Update_Screen|=($Scroll_Y!=0) || $Update_Cursor;
 
   on_scroll() if $Scroll_Y;
 
   my $screen=$NULLSTR;
   if($Update_Screen) {
-    highlight_current();
 
-    $screen=join $NULLSTR,@Screen_Lines;
+    highlight_current();
+    $screen=$Screen_Lines->flat();
 
     restore_current();
 
