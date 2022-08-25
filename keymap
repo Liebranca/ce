@@ -38,7 +38,7 @@
 # ---   *   ---   *   ---
 # base table
 
-  # 'key_name'=>[keycode_name,onTap,onHel,onRel]
+  # 'key_name'=>[keycode_name,flags,onTap,onHel,onRel]
 
   Genks::process_keymap(
 
@@ -46,19 +46,19 @@
     'ce/keys/ti',0,
 
     # quick exit for testing
-    ESC=>['escape','','','dpycl();exit(0);'],
+    ESC=>['escape',0,'','','dpycl();exit(0);'],
 
     # modifiers
-    LALT=>['LAlt','','',''],
-    RALT=>['RAlt','','',''],
-    LSHIFT=>['LShift','','',''],
+    LALT=>['LAlt',1,'','',''],
+    RALT=>['RAlt',1,'','',''],
+    LSHIFT=>['LShift',1,'','',''],
 
     # movement keys
-    AUP=>['up','ce/keys/up.k'],
-    ADWN=>['down','ce/keys/down.k'],
-    ARGT=>['right','ce/keys/right.k'],
-    ALFT=>['left','ce/keys/left.k'],
-    ERET=>["ret",'ce/keys/ret.k'],
+    AUP=>['up',0,'ce/keys/up.k'],
+    ADWN=>['down',0,'ce/keys/down.k'],
+    ARGT=>['right',0,'ce/keys/right.k'],
+    ALFT=>['left',0,'ce/keys/left.k'],
+    ERET=>["ret",0,'ce/keys/ret.k'],
 
   );
 

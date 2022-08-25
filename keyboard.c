@@ -47,9 +47,12 @@
   #include "arstd.h"
 
 // ---   *   ---   *   ---
-// constants/defaults
+// ROM
+
   #define IBF_SZ 0x08
   #define REPEAT_DELAY 4
+
+  #define KVAR_IDLE_HEL 0x00000001
 
 // ---   *   ---   *   ---
 // macros
@@ -75,6 +78,9 @@ typedef struct {
 
   // translation table
   char* keylay;
+
+  // key data
+  int* keyvars;
   int non_ti;
 
   // event tracking
@@ -158,11 +164,14 @@ void stevdlay(int dlay) {kbd.evdlay=dlay;};
 // exit without restoring term
 
 void onsegv(int sig) {
+
   printf(
     "\r\n!!(0): "
     "I messed up the math somewhere\r\n"
 
-  );exit(1);
+  );
+
+  exit(1);
 
 };
 
@@ -213,13 +222,18 @@ int iopen(void) {
 
   return 0;
 
+};
+
+// ---   *   ---   *   ---
 // ^the undo for it
-};void iclose(void) {
+
+void iclose(void) {
 
   // free mems
   free(K_TAP_FUNCS);
   free(K_HEL_FUNCS);
   free(K_REL_FUNCS);
+  free(kbd.keyvars);
   free(kbd.keys);
 
   // close X display
@@ -286,14 +300,19 @@ void evpop(char key) {
   char idex=0;for(char x=0;x<kbd.evstack_i;x++) {
     if(key==kbd.evstack[x]) {idex=x;break;};
 
-  };kbd.evstack[idex]=0x00;
+  };
+
+  kbd.evstack[idex]=0x00;
 
   // shift
   while(idex<kbd.evstack_i) {
     kbd.evstack[idex]=kbd.evstack[idex+1];
     idex++;
 
-  };kbd.evstack_i--;
+  };
+
+  kbd.evstack_i--;
+
 };
 
 // puts event in stack
@@ -311,6 +330,7 @@ void evpush(char key) {
     kbd.evstack_i++;
 
   };
+
 };
 
 // ---   *   ---   *   ---
@@ -380,7 +400,12 @@ void keychk(void) {
     K_HEL_FUNCS[(x+1)*IS_HEL(x)*repeat]();
 
     // update event count, set bits
-    kbd.evcnt+=(kbd.keys[x]&0b111)!=0;
+    kbd.evcnt+=
+
+      ((kbd.keys[x]&0b111)!=0)
+    * !(kbd.keyvars[x]&KVAR_IDLE_HEL)
+
+    ;
 
     kbd.keys[x]&=~(4+IS_HEL(x));
     kbd.keys[x]|=
@@ -427,7 +452,9 @@ void xkrd(char* ibuff) {
 
   };
 
-};void krd(char* ibuff) {
+};
+
+void krd(char* ibuff) {
   read(kbd.fd,ibuff,IBF_SZ);
 
 };
@@ -450,11 +477,17 @@ void xkeynt(void) {
       KeyPressMask|KeyReleaseMask
 
     // naughty ;<
-    );/*XkbSetDetectableAutoRepeat(kbd.xdpy,1,&r);*/
+    );
 
-  };kbd.f_krd=xkrd;
+    /*XkbSetDetectableAutoRepeat(kbd.xdpy,1,&r);*/
 
-};void xkeydl(void) {XCloseDisplay(kbd.xdpy);};
+  };
+
+  kbd.f_krd=xkrd;
+
+};
+
+void xkeydl(void) {XCloseDisplay(kbd.xdpy);};
 
 // ---   *   ---   *   ---
 
@@ -463,6 +496,8 @@ int keynt(
   int fd,
 
   char* keylay,
+  int* keyvars,
+
   int k_count,
   int non_ti
 
@@ -489,7 +524,9 @@ int keynt(
 
   // allocate keys array
   kbd.keys=malloc(sizeof(int)*k_count);
+  kbd.keyvars=malloc(sizeof(int)*k_count);
   memset(kbd.keys,0,sizeof(int)*k_count);
+  memcpy(kbd.keyvars,keyvars,sizeof(int)*k_count);
 
   // allocate callback arrays
   K_TAP_FUNCS=malloc(sizeof(nihil)*(k_count+1));
@@ -528,6 +565,7 @@ int keynt(
   };
 
   return 0;
+
 };
 
 // ---   *   ---   *   ---

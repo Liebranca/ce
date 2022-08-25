@@ -213,7 +213,7 @@ sub rdti($tifile,$pl=0) {
     my $onDown=tifunc($pl,$lc,$uc,$mr);
 
     push @map,$fullname;
-    push @map,[KI($name),
+    push @map,[KI($name),0,
       $onDown,'',''
 
     ];
@@ -249,7 +249,7 @@ sub process_keymap($tifile,$pl,@KEYMAP) {
     my $t=KI($ar->[0]);
     $ar->[0]=$t if defined $t;
 
-    my $f=Shb7::file($ar->[1]);
+    my $f=Shb7::file($ar->[2]);
 
     # read callbacks from file
     if(-f $f) {
@@ -258,7 +258,7 @@ sub process_keymap($tifile,$pl,@KEYMAP) {
 
     # or just ensure they are not undef
     } else {
-      for(my $j=1;$j<4;$j++) {
+      for(my $j=2;$j<5;$j++) {
         $ar->[$j]=(!$ar->[$j]) ? '' : $ar->[$j];
 
       };
@@ -290,13 +290,18 @@ sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
 # ---   *   ---   *   ---
 
   # get (used_indices:used_values)
+  # also collect flags
+
+  my @keyvars=();
   my @used_keys=();{
 
     for(my $i=1;$i<@KEYMAP;$i+=2) {
+
       push @used_keys,$KEYMAP[$i]->[0];
+      push @keyvars,$KEYMAP[$i]->[1];
 
       # convert code string to code reference
-      my @evs=@{$KEYMAP[$i]}[1..3];
+      my @evs=@{$KEYMAP[$i]}[2..4];
       for my $ev(@evs) {
 
         if(!is_coderef($ev)
@@ -353,6 +358,8 @@ sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
 
     (join '',@keylay),
 
+    \@keyvars,
+
     $#used_keys+1,
     $Cache{-NON_TI}
 
@@ -372,6 +379,7 @@ sub keymap_generator($fname) {
     K_COUNT=>['enum',[]],
 
     KEYLAY=>['static char',[]],
+    KEYVARS=>['static int',[]],
 
   );
 
@@ -379,9 +387,14 @@ sub keymap_generator($fname) {
 # layout -> keymap lookup table
 
   # get (used_indices:used_values)
+  # collect flags
+
   my @used_keys=();{
+
+    my $items=$lists{KEYVARS}->[1];
     for(my $i=1;$i<@KEYMAP;$i+=2) {
       push @used_keys,$KEYMAP[$i]->[0];
+      push @$items,$KEYMAP[$i]->[1];
 
     };
 
@@ -424,6 +437,7 @@ sub keymap_generator($fname) {
     # unpack array reference
     my (
       $kcode,
+      $kvar,
       $onTap,
       $onHel,
       $onRel,
@@ -446,7 +460,14 @@ sub keymap_generator($fname) {
   my $result=q{#define NON_TI }.
     $Cache{-NON_TI}."\n";
 
-  for my $key(qw(KEYMAP K_COUNT KEYLAY)) {
+  for my $key(qw(
+
+    KEYMAP
+    K_COUNT
+    KEYLAY
+    KEYVARS
+
+  )) {
 
     $result.=Emit::C->datasec(
 
@@ -486,6 +507,8 @@ sub keycalls_generator($fname) {
     my (
 
       $kcode,
+      $kvar,
+
       $onTap,
       $onHel,
       $onRel,

@@ -21,13 +21,19 @@ int keynt(
 
   // key table data
   char* keylay,
+  int* keyflags,
+
   int k_count,
   int non_ti
 
 );
 
 // convenience macro
-#define KEYNT(fd) keynt(fd,&(KEYLAY[0]),K_COUNT,NON_TI)
+#define KEYNT(fd) keynt(          \
+  fd,&(KEYLAY[0]),&(KEYVARS[0]),  \
+  K_COUNT,NON_TI                  \
+                                  \
+)
 
 // ---   *   ---   *   ---
 

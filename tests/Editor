@@ -82,6 +82,74 @@ my $Screen_Lines=GF::Text->new_frame(
 
 # ---   *   ---   *   ---
 
+sub get_selection($c) {
+
+  my ($x,$y,$sz)=($c->[0],$c->[1],1);
+
+  ($x,$y,$sz)=line_clamp($x,$y,$sz);
+  my @selected=([$x,$y,$sz]);
+
+# ---   *   ---   *   ---
+
+  my $sel=$Select_Beg;
+
+  if(defined $sel) {
+
+    my ($beg,$end)=$c->least($sel);
+    if($beg->[1] == $end->[1]) {
+
+      my ($x,$y,$sz)=(
+        $beg->[0],$beg->[1],
+        $end->[0]-$beg->[0]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      @selected=([$x,$y,$sz]);
+
+# ---   *   ---   *   ---
+
+    } else {
+
+      ($x,$y,$sz)=(
+        $beg->[0],$beg->[1],
+        $Canvas->{sz_x}-$beg->[1]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      @selected=([$x,$y,$sz]);
+
+      for $y($beg->[1]+1..$end->[1]) {
+      last if $y==$end->[1];
+
+        my ($x,$sz)=(0,$Canvas->{sz_x});
+
+        ($x,$y,$sz)=line_clamp($x,$y,$sz);
+        push @selected,[0,$y,$sz];
+
+      };
+
+      ($x,$y,$sz)=(
+        0,$end->[1],$end->[0]
+
+      );
+
+      ($x,$y,$sz)=line_clamp($x,$y,$sz);
+      push @selected,[$x,$y,$sz];
+
+    };
+
+# ---   *   ---   *   ---
+
+  };
+
+  return @selected;
+
+};
+
+# ---   *   ---   *   ---
+
 sub on_scroll() {
 
   $Y_Offset+=$Scroll_Y;
@@ -149,12 +217,14 @@ on_scroll();
 
 sub line_clamp($x,$y,$sz) {
 
-  $y=$#File_Lines if $y>$#File_Lines;
+  if($y<$#File_Lines) {
 
-  my $len=length $File_Lines[$y];
+    my $len=length $File_Lines[$y];
 
-  $x=$len if $x>$len;
-  $sz=$len if $sz>$len;
+    $x=$len if $x>$len;
+    $sz=$len if $sz>$len;
+
+  };
 
   return ($x,$y,$sz);
 
@@ -480,71 +550,15 @@ sub tab() {
 sub surp() {
 
   my $c=$Cursor->offset(0,$Y_Offset);
-  my ($x,$y,$sz)=($c->[0],$c->[1],1);
 
-  ($x,$y,$sz)=line_clamp($x,$y,$sz);
-  my @selected=([$x,$y,$sz]);
-
-# ---   *   ---   *   ---
-
-  my $sel=$Select_Beg;
-
-  if(defined $sel) {
-
-    my ($beg,$end)=$c->least($sel);
-    if($beg->[1] == $end->[1]) {
-
-      my ($x,$y,$sz)=(
-        $beg->[0],$beg->[1],
-        $end->[0]-$beg->[0]
-
-      );
-
-      ($x,$y,$sz)=line_clamp($x,$y,$sz);
-      @selected=([$x,$y,$sz]);
-
-# ---   *   ---   *   ---
-
-    } else {
-
-      ($x,$y,$sz)=(
-        $beg->[0],$beg->[1],
-        $Canvas->{sz_x}-$beg->[1]
-
-      );
-
-      ($x,$y,$sz)=line_clamp($x,$y,$sz);
-      @selected=([$x,$y,$sz]);
-
-      for $y($beg->[1]+1..$end->[1]) {
-      last if $y==$end->[1];
-
-        my ($x,$sz)=(0,$Canvas->{sz_x});
-
-        ($x,$y,$sz)=line_clamp($x,$y,$sz);
-        push @selected,[0,$y,$sz];
-
-      };
-
-      ($x,$y,$sz)=(
-        0,$end->[1],$end->[0]
-
-      );
-
-      ($x,$y,$sz)=line_clamp($x,$y,$sz);
-      push @selected,[$x,$y,$sz];
-
-    };
-
-# ---   *   ---   *   ---
-
-  };
-
+  my @selected=get_selection($c);
   my $pop_nl=undef;
+
+# ---   *   ---   *   ---
 
   for my $ar(@selected) {
 
-    ($x,$y,$sz)=@$ar;
+    my ($x,$y,$sz)=@$ar;
     my ($first,$last)=(
 
       $ar==$selected[ 0],
@@ -552,20 +566,45 @@ sub surp() {
 
     );
 
-    substr $File_Lines[$y],
-      $x,$sz,$NULLSTR;
+    next unless defined $File_Lines[$y];
 
 # ---   *   ---   *   ---
+# calc eol after shrinking if select-deleting
 
-    my $x_at_eol=(
-      $x>=length $File_Lines[$y]
+    my $x_at_eol;
+    if($sz>1) {
 
-    )
+      substr $File_Lines[$y],
+        $x,$sz,$NULLSTR;
 
-    && $y<$#File_Lines
-    && ($first || $last)
+      $x_at_eol=(
+        $x>=length $File_Lines[$y]
 
-    ;
+      )
+
+      && $y<$#File_Lines
+      && ($first || $last)
+
+      ;
+
+    } else {
+
+      $x_at_eol=(
+        $x>=length $File_Lines[$y]
+
+      )
+
+      && $y<$#File_Lines
+      && ($first || $last)
+
+      ;
+
+      substr $File_Lines[$y],
+        $x,$sz,$NULLSTR;
+
+    };
+
+# ---   *   ---   *   ---
 
     if($x_at_eol) {
 
@@ -594,7 +633,7 @@ sub surp() {
 
   if(defined $pop_nl && $pop_nl<$#File_Lines) {
 
-    $y=$pop_nl;
+    my $y=$pop_nl;
 
     $File_Lines[$y].=$File_Lines[$y+1];
     $File_Lines[$y+1]=undef;
@@ -608,12 +647,18 @@ sub surp() {
 
 # ---   *   ---   *   ---
 
-  cursor_set(
+  my @reset_pos=(
     $selected[0]->[0],
-    $selected[0]->[1],
+    $selected[0]->[1]-$Y_Offset
 
   );
 
+  if($reset_pos[1]<0) {
+    $Scroll_Y=$reset_pos[1];
+
+  };
+
+  cursor_set(@reset_pos);
   on_scroll();
 
 };
@@ -843,7 +888,7 @@ Lycon::Loop::set_quit(sub {
 
 });
 
-Lycon::Clk::nit();
+Lycon::Clk::nit(flen=>25000);
 
 # ---   *   ---   *   ---
 

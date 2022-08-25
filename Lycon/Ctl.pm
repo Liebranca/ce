@@ -53,6 +53,21 @@ package Lycon::Ctl;
 
   };
 
+  # sets special flags for certain keys
+  # you'd seldom want to modify this, however
+  # if you do, do so before register_events
+  our $KVARS={
+
+    RShift=>1,
+    RCtrl=>1,
+    RAlt=>1,
+
+    LShift=>1,
+    LCtrl=>1,
+    LAlt=>1,
+
+  };
+
 # ---   *   ---   *   ---
 # register modules that do context switches
 
@@ -99,8 +114,11 @@ sub register_events(@args) {
 
     for my $id(@{$ids{$key}}) {
 
+      my $kvars=$KVARS->{$id};
+      $kvars//=0;
+
       push @{$modules->{$pkg}->{kbd}},$id=>[
-        @calls[$i..$i+2]
+        $kvars,@calls[$i..$i+2]
 
       ];
 

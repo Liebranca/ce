@@ -129,6 +129,8 @@ sub define(
 
   $key,$id,
 
+  $kvars,
+
   $onTap=undef,
   $onHel=undef,
   $onRel=undef,
@@ -140,7 +142,10 @@ sub define(
 
   $KeyIDs{$id}=$key;
 
-  push @Keys,$key=>[$id,$onTap,$onHel,$onRel];
+  push @Keys,$key=>[
+    $id,$kvars,$onTap,$onHel,$onRel
+
+  ];
 
 };
 
@@ -149,7 +154,7 @@ sub define(
 
 sub redef(
 
-  $key,
+  $key,$kvars,
 
   $onTap=undef,
   $onHel=undef,
@@ -161,13 +166,15 @@ sub redef(
 
   my $idex=($Keys{$key}*2)+1;
 
-  $Keys[$idex]->[1]=(defined $onTap)
+  $Keys[$idex]->[1]=$kvars;
+
+  $Keys[$idex]->[2]=(defined $onTap)
     ? $onTap : $Keys[$idex]->[1];
 
-  $Keys[$idex]->[2]=(defined $onHel)
+  $Keys[$idex]->[3]=(defined $onHel)
     ? $onHel : $Keys[$idex]->[2];
 
-  $Keys[$idex]->[3]=(defined $onRel)
+  $Keys[$idex]->[4]=(defined $onRel)
     ? $onRel : $Keys[$idex]->[3];
 
 };
@@ -191,9 +198,7 @@ sub key_by_id($id) {
 sub sv_by_id($id,@args) {
 
   my $key=key_by_id($id);
-
   my $calls=svdef($key);
-  redef($key,@args);
 
   return [$key,$calls];
 
@@ -213,6 +218,7 @@ sub svdef($key) {
     $Keys[$idex]->[1],
     $Keys[$idex]->[2],
     $Keys[$idex]->[3],
+    $Keys[$idex]->[4],
 
   ];
 
@@ -221,15 +227,16 @@ sub svdef($key) {
 # ---   *   ---   *   ---
 # ^restore saved callbacks
 
-sub lddef($key,$calls) {
+sub lddef($key,$kvars,$calls) {
 
   haskey($key,1);
 
   my $idex=($Keys{$key}*2)+1;
 
-  $Keys[$idex]->[1]=$calls->[0];
-  $Keys[$idex]->[2]=$calls->[1];
-  $Keys[$idex]->[3]=$calls->[2];
+  $Keys[$idex]->[1]=$kvars;
+  $Keys[$idex]->[2]=$calls->[0];
+  $Keys[$idex]->[3]=$calls->[1];
+  $Keys[$idex]->[4]=$calls->[2];
 
 };
 
@@ -248,12 +255,15 @@ sub nit() {
   for my $mod(values %{$modules}) {
 
     my @names=array_keys($mod->{kbd});
+    my @data=array_values($mod->{kbd});
 
     # check that reserved keys are mapped
-    while(@names) {
+    while(@names && @data) {
 
       my $name=shift @names;
       my $id=Genks::KI($name);
+
+      my $kvars=@{(shift @data)}[0];
 
       # set blank callbacks if reserved && unused
       if(!exists $KeyIDs{$id}) {
@@ -261,6 +271,8 @@ sub nit() {
         define(
 
           $name,$id,
+
+          $kvars,
 
           $NULLSTR,
           $NULLSTR,
@@ -278,7 +290,6 @@ sub nit() {
 # register the events
 
   %Keys=@Keys;
-
   my @ntargs=Genks::pl_keymap(\@Keys,\%Keys);
 
   Lycon::keynt(@ntargs);
@@ -298,7 +309,7 @@ my %shit=reverse %Keys;
   for(my $x=1;$x<@Keys;$x+=2) {
 
     my $name=$Keys[$x-1];
-    my @ar=@{$Keys[$x]}[1..3];
+    my @ar=@{$Keys[$x]}[2..4];
 
     my $i=0;
 

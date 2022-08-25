@@ -65,6 +65,7 @@ void clknt(
 
 // frame-time calculator
 void tick(int busy) {
+
   c.fbeg=(uint64_t) clock();
   c.delta=c.fbeg-c.fend;
   c.fend=c.fbeg;

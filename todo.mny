@@ -36,3 +36,6 @@ x ^^ Affecting selection
 ~ ^ Cut
 
 ~ Write
+
+*>General code improvements
+~ methodize substr on whole line
