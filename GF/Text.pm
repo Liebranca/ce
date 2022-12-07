@@ -63,6 +63,7 @@ sub nit($class,$frame,$s,$y) {
     original=>$s,
 
     escapes=>[],
+    updated=>0,
 
     frame=>$frame,
 
@@ -92,6 +93,8 @@ sub escape_at(
   my $line=$frame->{-lines}->[$y];
   push @{$line->{escapes}},[$x=>$seq];
 
+  $line->{updated}=1;
+
 };
 
 sub descape($class,$frame,$y,$pat) {
@@ -108,6 +111,7 @@ sub descape($class,$frame,$y,$pat) {
   };
 
   array_filter($line->{escapes});
+  $line->{updated}=1;
 
 };
 
@@ -118,6 +122,9 @@ sub apply_escapes($class,$frame) {
   my $sz=$frame->{-rect}->{sz_x};
 
   for my $line(@{$frame->{-lines}}) {
+
+    next unless $line->{updated};
+    $line->{updated}=0;
 
     my $escapes=$line->{escapes};
     my $x_mod=0;

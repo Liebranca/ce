@@ -63,13 +63,18 @@ $G->nit(0,@ttysz);
 my $Canvas=$G->{-canvas};
 my $Cursor=$G->{-cursor};
 
+sub Y_MAX() {$Canvas->{sz_y}-2};
+sub Y_MIN() {0};
+
+sub X_MAX() {$Canvas->{sz_x}-1};
+sub X_MIN() {0};
+
 # ---   *   ---   *   ---
 
 my $File=orc('./avto');
-
 my @File_Lines=split $NEWLINE_RE,$File;
 
-@File_Lines=$Canvas->textfit(
+$Canvas->textfit(
   \@File_Lines,
   offscreen=>1,
 
@@ -426,11 +431,19 @@ sub restore_current() {
 
 sub cursor_set($x,$y) {
 
-  $x*=0+($x>0);
-  $y*=0+($y>0);
+  my $y_max=Y_MAX();
+  my $y_min=Y_MIN();
+  my $x_max=X_MAX();
+  my $x_min=X_MIN();
 
-  $x=$Canvas->{sz_x} if $x>$Canvas->{sz_x};
-  $y=$Canvas->{sz_y} if $x>$Canvas->{sz_y};
+  $Scroll_Y+=$y*($y<$y_min);
+  $Scroll_Y+=$y*($y>$y_max);
+
+  $x*=0+($x>$x_min);
+  $y*=0+($y>$y_min);
+
+  $x=$x_max if $x>$x_max;
+  $y=$y_max if $y>$y_max;
 
   @$Cursor=($x,$y);
   $Update_Cursor=1;
@@ -442,9 +455,14 @@ sub cursor_set($x,$y) {
 sub cursor_up(%O) {
 
   $O{n}//=1;
+  my $cap=$O{n}-1;
 
-  $Scroll_Y-=$Cursor->[1]==0;
-  $Cursor->[1]-=$O{n}*($Cursor->[1]>0);
+  $Scroll_Y-=$Cursor->[1]<=$cap;
+
+  $Cursor->[1]-=$O{n}*(
+    $Cursor->[1] > $cap
+
+  );
 
   $Update_Cursor=1;
 
@@ -453,10 +471,12 @@ sub cursor_up(%O) {
 sub cursor_down(%O) {
 
   $O{n}//=1;
+  my $cap=Y_MAX()-($O{n}-1);
 
-  $Scroll_Y+=$Cursor->[1]>=$Canvas->{sz_y}-2;
+  $Scroll_Y+=$Cursor->[1]>=$cap;
+
   $Cursor->[1]+=$O{n}*(
-    $Cursor->[1]<($Canvas->{sz_y}-2)
+    $Cursor->[1] < $cap
 
   );
 
@@ -467,8 +487,13 @@ sub cursor_down(%O) {
 sub cursor_left(%O) {
 
   $O{n}//=1;
+  my $cap=$O{n}-1;
 
-  $Cursor->[0]-=$O{n}*($Cursor->[0]>0);
+  $Cursor->[0]-=$O{n}*(
+    $Cursor->[0] > $cap
+
+  );
+
   $Update_Cursor=1;
 
 };
@@ -476,9 +501,10 @@ sub cursor_left(%O) {
 sub cursor_right(%O) {
 
   $O{n}//=1;
+  my $cap=X_MAX()-($O{n}-1);
 
   $Cursor->[0]+=$O{n}*(
-    $Cursor->[0]<($Canvas->{sz_x})
+    $Cursor->[0] < $cap
 
   );
 
@@ -652,11 +678,6 @@ sub surp() {
     $selected[0]->[1]-$Y_Offset
 
   );
-
-  if($reset_pos[1]<0) {
-    $Scroll_Y=$reset_pos[1];
-
-  };
 
   cursor_set(@reset_pos);
   on_scroll();
@@ -909,7 +930,6 @@ Lycon::Loop::set_logic(sub {
   ti($ibuff) if length $ibuff;
 
   $Update_Screen|=($Scroll_Y!=0) || $Update_Cursor;
-
   on_scroll() if $Scroll_Y;
 
   my $screen=$NULLSTR;

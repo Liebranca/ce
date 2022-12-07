@@ -25,6 +25,12 @@ package Lycon::Clk;
   use Lycon;
 
 # ---   *   ---   *   ---
+# info
+
+  our $VERSION=v0.00.2;
+  our $AUTHOR='IBN-3DILA';
+
+# ---   *   ---   *   ---
 # constructor
 
 sub nit(%O) {
@@ -41,6 +47,7 @@ sub nit(%O) {
   ;
 
   Lycon::clknt(
+
     $O{flen},
     $O{vis},
     $O{vsz}

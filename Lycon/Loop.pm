@@ -123,13 +123,15 @@ sub run(%O) {
   delete $O{panic};
 
   my %ctx=(%O);
+  my $dwbuff=\$Cache->{gd}->{-buff};
 
   while(!$Cache->{quit_proc}->()) {
 
     $Cache->{busy}=Lycon::gtevcnt();
 
     # draw on update
-    if(0<length $Cache->{gd}->{-buff}) {
+    if(0<length $$dwbuff) {
+
       $Cache->{gd}->draw(%ctx);
 
     };

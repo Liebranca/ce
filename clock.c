@@ -36,26 +36,32 @@ typedef struct {
   uint32_t vix;
   uint32_t vsz;
 
-} CLK;static CLK c={0};
+} CLK;
+
+// ---   *   ---   *   ---
+// global state
+
+  static CLK c;
 
 // ---   *   ---   *   ---
 
 // constructor
 void clknt(
+
   uint64_t flen,
+
   wchar_t* v,
   uint32_t vsz
 
 ) {
 
-  memset(&c,0,sizeof(CLK));
   static wchar_t s[0x80];
-
   for(int x=0;x<vsz;x++) {
     s[x]=*(v+x);
 
   };
 
+  memset(&c,0,sizeof(CLK));
   c=(CLK) {0,clock(),flen,0,s,0,vsz};
 
 };
@@ -76,7 +82,9 @@ void tick(int busy) {
     usleep(m_flen-c.delta);
     c.delta=0;
 
-  };c.vix++;c.vix&=(c.vsz-1);
+  };
+
+  c.vix++;c.vix&=(c.vsz-1);
 
 };
 

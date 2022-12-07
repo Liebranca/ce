@@ -150,6 +150,7 @@ void main(int argc,char** argv) {
 // init the program clock
 
   clknt(
+
     0x6000,
 
     L"\x01A9\x01AA\x01AB\x01AC"

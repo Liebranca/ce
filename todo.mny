@@ -38,4 +38,19 @@ x ^^ Affecting selection
 ~ Write
 
 *>General code improvements
-~ methodize substr on whole line
+~ Methodize substr on selection
+~ Handling of @File_Lines independent of screen rect
+
+*>Backburner/ideas
+~ Sectioned files
+~ Separation of tokens and whitespace
+
+~ Regular find/replace
+~ ^ same system but using perlre
+
+~ Listing deps, symbols, ROM sections
+~ Listing markers, eg TODO/FIX
+
+
+
+

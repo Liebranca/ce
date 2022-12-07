@@ -203,7 +203,7 @@ sub textfit($self,$lines,%O) {
 
   };
 
-  return @lines;
+  @$lines=@lines;
 
 };
 
