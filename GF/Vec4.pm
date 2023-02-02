@@ -182,25 +182,32 @@ sub over($self,$other) {
 };
 
 # ---   *   ---   *   ---
-# put byte onto vector position
-# in screen
+# get byte at vector position
+# for ctlproc
 
 sub sput($self,%O) {
 
-  $O{char} //= q[#];
+  $O{char}  //= q[#];
+  $O{color} //= 0x07;
 
   my ($x,$y)=@$self;
 
-  return
+  my $req_a={
+    proc => 'mvcur',
+    args => [int($y+1),int($x+1)],
 
-    q[$:gd_mvcur ] .
+  };
 
-      int($y+1) . q[,] .
-      int($x+1) .
+  my $req_b={
 
-    q[;>] . $O{char}
+    proc => 'color',
+    args => [$O{color}],
 
-  ;
+    ct   => $O{char},
+
+  };
+
+  return ($req_a,$req_b);
 
 };
 

@@ -85,31 +85,37 @@ sub get_range($self) {
 # ---   *   ---   *   ---
 # outs draw commands for ctlproc
 
-sub update($self,%O) {
+sub sput($self,%O) {
 
   # defaults
-  $O{char} //= q[.];
+  $O{char}  //= q[.];
+  $O{color} //= 0x07;
 
-  my $out=$NULLSTR;
+  my @out=();
 
   for my $pt($self->get_range()) {
 
     my ($x,$y)=@$pt;
 
-    $out.=
+    my $req_a={
+      proc => 'mvcur',
+      args => [int($y+1),int($x+1)],
 
-      q[$:gd_mvcur ] .
+    };
 
-        int($y+1) . q[,] .
-        int($x+1) .
+    my $req_b={
+      proc => 'color',
+      args => [$O{color}],
 
-      q[;>] . $O{char}
+      ct   => $O{char},
 
-    ;
+    };
+
+    push @out,$req_a,$req_b;
 
   };
 
-  return $out;
+  return @out;
 
 };
 

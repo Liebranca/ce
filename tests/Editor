@@ -33,8 +33,6 @@ package main;
   use GF::Rect;
   use GF::Text;
 
-  binmode(STDOUT,':utf8');
-
 # ---   *   ---   *   ---
 
 my $Cache={

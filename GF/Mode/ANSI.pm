@@ -33,6 +33,7 @@ package GF::Mode::ANSI;
   use GF::Vec4;
 
   use Lycon;
+  binmode(STDOUT,':utf8');
 
 # ---   *   ---   *   ---
 # info
@@ -45,16 +46,20 @@ package GF::Mode::ANSI;
 
   sub Frame_Vars($class) {return {
 
-    -buff=>$NULLSTR,
-    -canvas=>undef,
-    -cursor=>undef,
+    -buff   => [],
+
+    -canvas => undef,
+    -cursor => undef,
 
     -autoload=>[qw(
+
+      rd ipret req
 
       draw color
       mvcur encur
 
       cline
+      clear
 
     )],
 
@@ -105,24 +110,62 @@ sub canvas(
 };
 
 # ---   *   ---   *   ---
+# reads a draw request
 
-sub draw($class,$frame,%ctx) {
+sub rd($class,$frame,$req) {
 
-  my $buff=$frame->{-buff};
+  my $out=$NULLSTR;
 
-  $ctx{gd}//=$frame;
+  my ($proc,$args,$ct)=(
 
-  Peso::Ipret::pesc(
+    $req->{proc},
+    $req->{args},
 
-    \$buff,
-    %ctx,
+    $req->{ct},
 
   );
 
-  print {*STDOUT} $buff;
+  $proc //= $NULLSTR;
+  $args //= [];
+
+  $ct   //= $NULLSTR;
+
+  $out.=($proc ne $NULLSTR)
+    ? $frame->$proc(@$args)
+    : $NULLSTR;
+    ;
+
+  $out.=$ct;
+
+  return $out;
+
+};
+
+# ---   *   ---   *   ---
+# ^batch
+
+sub ipret($class,$frame) {
+
+  my $out  = $NULLSTR;
+  my $buff = $frame->{-buff};
+
+  for my $req(@$buff) {
+    $out.=$frame->rd($req);
+
+  };
+
+  return $out;
+
+};
+
+# ---   *   ---   *   ---
+
+sub draw($class,$frame) {
+
+  print {*STDOUT} $frame->ipret();
   STDOUT->flush();
 
-  $frame->{-buff}=$NULLSTR;
+  $frame->{-buff}=[];
 
 };
 
@@ -155,6 +198,15 @@ sub color($class,$frame,@ar) {
 };
 
 # ---   *   ---   *   ---
+# pushes commands to draw buffer
+
+sub req($class,$frame,@slurp) {
+  my $buff=$frame->{-buff};
+  push @$buff,@slurp;
+
+};
+
+# ---   *   ---   *   ---
 
 sub mvcur($class,$frame,@ar) {
   return "\e[".(join ';',@ar).'H';
@@ -180,8 +232,10 @@ sub encur($class,$frame,$enable) {
 };
 
 # ---   *   ---   *   ---
+# clearing
 
 sub cline($class,$frame) {return "\e[2K"};
+sub clear($class,$frame) {return "\e[2J"};
 
 # ---   *   ---   *   ---
 1; # ret

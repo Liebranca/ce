@@ -53,7 +53,11 @@ sub nit(
   $O{pos_x}   //= 0;
   $O{pos_y}   //= 0;
   $O{border}  //= 2;
+
   $O{e_char}  //= undef;
+  $O{e_color} //= undef;
+
+  $O{color}   //= 0x07;
 
   my ($sz_x,$sz_y)=split m[x],$dim;
 
@@ -84,17 +88,21 @@ sub nit(
   # make new instance
   my $rect=bless {
 
-    sz_x=>$sz_x,
-    sz_y=>$sz_y,
+    sz_x    => $sz_x,
+    sz_y    => $sz_y,
 
-    pos_x=>$O{pos_x},
-    pos_y=>$O{pos_y},
-    border=>$O{border},
+    pos_x   => $O{pos_x},
+    pos_y   => $O{pos_y},
+    border  => $O{border},
 
-    top_l=>$pts{top_l},
-    top_r=>$pts{top_r},
-    bot_l=>$pts{bot_l},
-    bot_r=>$pts{bot_r},
+    color   => $O{color},
+
+    top_l   => $pts{top_l},
+    top_r   => $pts{top_r},
+    bot_l   => $pts{bot_l},
+    bot_r   => $pts{bot_r},
+
+# ---   *   ---   *   ---
 
     ege_u=>GF::Line->nit(
       $pts{top_l},
@@ -120,8 +128,10 @@ sub nit(
 
     ),
 
-    lines=>[],
-    e_char=>$O{e_char},
+# ---   *   ---   *   ---
+
+    lines  => [],
+    e_char => $O{e_char},
 
   },$class;
 
@@ -218,7 +228,7 @@ sub textfit($self,$lines,%O) {
 # give command for re-drawing
 # content inside the rect
 
-sub update_lines($self) {
+sub sput_lines($self) {
 
   # initial position of text
   my ($x,$y) = (1,0);
@@ -227,16 +237,34 @@ sub update_lines($self) {
 
   # apply cursor movement
   # to copy of current content
-  return map {$ARG=
+  my @out=();
 
-    q[$:gd_mvcur ].
+  for my $line(@{$self->{lines}}) {
 
-      ($self->{pos_y}+($y++)+1).q{,}.
-      ($self->{pos_x}+$x+1).
+    my $req_a={
+      proc=>'mvcur',
+      args=>[
+        $self->{pos_y}+($y++)+1,
+        $self->{pos_x}+$x+1
 
-    q[;>].$ARG;
+      ],
 
-  } @{$self->{lines}};
+    };
+
+    my $req_b={
+
+      proc => 'color',
+      args => [$self->{color}],
+
+      ct   => $ARG,
+
+    };
+
+    push @out,$req_a,$req_b;
+
+  };
+
+  return @out;
 
 };
 
@@ -244,10 +272,15 @@ sub update_lines($self) {
 # give redraw cmd for the
 # edges of the rect
 
-sub update_edges($self) {
+sub sput_edges($self) {
 
-  my @edges  = map {
-    $ARG->update(char=>$self->{e_char})
+  my @edges=map {
+
+    $ARG->sput(
+      char  => $self->{e_char},
+      color => $self->{e_color},
+
+    );
 
   } $self->edges();
 
@@ -256,11 +289,11 @@ sub update_edges($self) {
 # ---   *   ---   *   ---
 # outs draw commands for ctlproc
 
-sub update($self) {
+sub sput($self) {
 
   return (
-    $self->update_lines(),
-    $self->update_edges(),
+    $self->sput_lines(),
+    $self->sput_edges(),
 
   );
 

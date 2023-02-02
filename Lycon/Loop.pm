@@ -184,8 +184,8 @@ sub run(%O) {
   my $panic=$O{panic};
   delete $O{panic};
 
-  my %ctx=(%O);
-  my $dwbuff=\$Cache->{gd}->{-buff};
+  my %ctx    = (%O);
+  my $dwbuff = \$Cache->{gd}->{-buff};
 
   while(!$Cache->{quit_proc}->()) {
 
@@ -193,8 +193,7 @@ sub run(%O) {
 
     # draw on update
     if(0<length $$dwbuff) {
-
-      $Cache->{gd}->draw(%ctx);
+      $Cache->{gd}->draw();
 
     };
 

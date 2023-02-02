@@ -28,16 +28,16 @@ my @out = ();
 
 # ---   *   ---   *   ---
 
-#my $vec=GF::Vec4->nit(3,0);
+#my $vec=GF::Vec4->nit(0,0);
 #push @out,$vec->sput(char=>$GF::Icon::PAIN_DED);
 
 # ---   *   ---   *   ---
 
 #my $line=GF::Line->nit([0,0],[0,3]);
-#push @out,$line->update(char=>q[\\]);
-#
+#push @out,$line->sput(char=>q[\\]);
+
 ## ---   *   ---   *   ---
-#
+
 #my $rect=GF::Rect->nit('20x9',pos_x=>4,e_char=>q[*],border=>1);
 #
 #$rect->textfit(
@@ -45,21 +45,11 @@ my @out = ();
 #
 #);
 #
-#push @out,$rect->update();
+#push @out,$rect->sput();
 
 # ---   *   ---   *   ---
 
-push @out,(
-  $GF::Icon::NSPACE,
-  "\n"
-
-);
-
-# ---   *   ---   *   ---
-
-print "\e[2J";
-
-$G->{-buff}.=join q{},@out;
+$G->req(@out);
 $G->draw();
 
 # ---   *   ---   *   ---
