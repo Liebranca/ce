@@ -64,15 +64,15 @@ package Lycon::Kbd;
     q{%s <%s> is already bound};
 
 # ---   *   ---   *   ---
-# global state
+# GBL
 
-  my @Keys=();
-  our %Keys=();
+  my  @Keys   = ();
+  our %Keys   = ();
 
-  my @SwKeys=();
-  my %KeyIDs=();
+  my  @SwKeys = ();
+  my  %KeyIDs = ();
 
-  our $Initialized=0;
+  our $Nited  = undef;
 
 # ---   *   ---   *   ---
 # common errorchk
@@ -245,6 +245,8 @@ sub lddef($key,$kvars,$calls) {
 
 sub nit() {
 
+  return if $Nited;
+
   %Keys=@Keys;
 
   # fetch modules requesting keyboard access
@@ -254,16 +256,16 @@ sub nit() {
   # ^get keydata for all
   for my $mod(values %{$modules}) {
 
-    my @names=array_keys($mod->{kbd});
-    my @data=array_values($mod->{kbd});
+    my @names = array_keys($mod->{kbd});
+    my @data  = array_values($mod->{kbd});
 
     # check that reserved keys are mapped
     while(@names && @data) {
 
-      my $name=shift @names;
-      my $id=Genks::KI($name);
+      my $name  = shift @names;
+      my $id    = Genks::KI($name);
 
-      my $kvars=@{(shift @data)}[0];
+      my $kvars = @{(shift @data)}[0];
 
       # set blank callbacks if reserved && unused
       if(!exists $KeyIDs{$id}) {
@@ -297,14 +299,14 @@ sub nit() {
   # load callbacks
   ldkeys();
 
+  $Nited=1;
+
 };
 
 # ---   *   ---   *   ---
 # load defined callbacks
 
 sub ldkeys() {
-
-my %shit=reverse %Keys;
 
   for(my $x=1;$x<@Keys;$x+=2) {
 

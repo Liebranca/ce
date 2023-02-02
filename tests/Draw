@@ -9,34 +9,57 @@
   use strict;
   use warnings;
 
+  use English qw(-no_match_vars);
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Lycon;
+
   use GF::Mode::ANSI;
 
+  use GF::Vec4;
+  use GF::Icon;
+  use GF::Line;
   use GF::Rect;
 
 # ---   *   ---   *   ---
 
-my @ttysz=(0,0);Lycon::ttysz(\@ttysz);
-
-my $G=GF::Mode::ANSI->new_frame();
-$G->nit(0,@ttysz);
+my $G   = GF::Mode::ANSI->canvas();
+my @out = ();
 
 # ---   *   ---   *   ---
 
-my $rect=GF::Rect->nit('20x30',pos_x=>30);
+#my $vec=GF::Vec4->nit(3,0);
+#push @out,$vec->sput(char=>$GF::Icon::PAIN_DED);
 
-my @lines=$rect->textfit(
-  [q{Hello there!}x64]
+# ---   *   ---   *   ---
+
+#my $line=GF::Line->nit([0,0],[0,3]);
+#push @out,$line->update(char=>q[\\]);
+#
+## ---   *   ---   *   ---
+#
+#my $rect=GF::Rect->nit('20x9',pos_x=>4,e_char=>q[*],border=>1);
+#
+#$rect->textfit(
+#  [q(),q(Hello there, stranger! I shall be your guide through these darklands...)]
+#
+#);
+#
+#push @out,$rect->update();
+
+# ---   *   ---   *   ---
+
+push @out,(
+  $GF::Icon::NSPACE,
+  "\n"
 
 );
 
-$rect->text_update(\@lines);
+# ---   *   ---   *   ---
 
 print "\e[2J";
 
-$G->{-buff}.=join q{},@lines;
+$G->{-buff}.=join q{},@out;
 $G->draw();
 
 # ---   *   ---   *   ---

@@ -50,9 +50,10 @@ sub nit(
 ) {
 
   # defaults
-  $O{pos_x}//=0;
-  $O{pos_y}//=0;
-  $O{border}//=2;
+  $O{pos_x}   //= 0;
+  $O{pos_y}   //= 0;
+  $O{border}  //= 2;
+  $O{e_char}  //= undef;
 
   my ($sz_x,$sz_y)=split m[x],$dim;
 
@@ -119,6 +120,9 @@ sub nit(
 
     ),
 
+    lines=>[],
+    e_char=>$O{e_char},
+
   },$class;
 
   return $rect;
@@ -148,6 +152,9 @@ sub textfit($self,$lines,%O) {
 
   # defaults
   $O{offscreen}//=0;
+
+  # wipe previous
+  $self->{lines}=[];
 
   my @lines=@$lines;
 
@@ -184,8 +191,8 @@ sub textfit($self,$lines,%O) {
 
   };
 
-  my $nul="\x{00}";
-  my $us="\x{1F}";
+  my $nul = "\x{00}";
+  my $us  = "\x{1F}";
 
   my $ascii_ctl=qr{[$nul-$us]}x;
 
@@ -203,17 +210,24 @@ sub textfit($self,$lines,%O) {
 
   };
 
-  @$lines=@lines;
+  @{$self->{lines}}=@lines;
 
 };
 
 # ---   *   ---   *   ---
+# give command for re-drawing
+# content inside the rect
 
-sub text_update($self,$lines) {
+sub update_lines($self) {
 
-  my ($x,$y)=@{$self->{top_l}};
+  # initial position of text
+  my ($x,$y) = (1,0);
+  $x+=$self->{border};
+  $y+=$self->{border};
 
-  map {$ARG=
+  # apply cursor movement
+  # to copy of current content
+  return map {$ARG=
 
     q[$:gd_mvcur ].
 
@@ -222,7 +236,33 @@ sub text_update($self,$lines) {
 
     q[;>].$ARG;
 
-  } @$lines;
+  } @{$self->{lines}};
+
+};
+
+# ---   *   ---   *   ---
+# give redraw cmd for the
+# edges of the rect
+
+sub update_edges($self) {
+
+  my @edges  = map {
+    $ARG->update(char=>$self->{e_char})
+
+  } $self->edges();
+
+};
+
+# ---   *   ---   *   ---
+# outs draw commands for ctlproc
+
+sub update($self) {
+
+  return (
+    $self->update_lines(),
+    $self->update_edges(),
+
+  );
 
 };
 

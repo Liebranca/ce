@@ -10,9 +10,10 @@
 #
 # CONTRIBUTORS
 # lyeb,
-# ---   *   ---   *   ---
 
+# ---   *   ---   *   ---
 # deps
+
 package Lycon::Ctl;
 
   use v5.36.0;
@@ -31,24 +32,15 @@ package Lycon::Ctl;
   use lib $ENV{'ARPATH'}.'/lib/';
 
 # ---   *   ---   *   ---
+# info
+
+  our $VERSION = v0.01.0;#a
+  our $AUTHOR  = 'IBN-3DILA';
+
+# ---   *   ---   *   ---
 # global state
 
   our $Cache={
-
-    keysets=>[
-
-      -COM=>[qw(escape ret space tab backspace del)],
-      -NAV=>[qw(home end re av)],
-
-      -CTL_R=>[qw(RShift RCtrl RAlt)],
-      -CTL_L=>[qw(LShift LCtrl LAlt)],
-
-      -MOV_A=>[qw(up left down right)],
-      -MOV_B=>[qw(w a s d)],
-      -MOV_C=>[qw(i j k l)],
-
-    ],
-
     modules=>{},
 
   };
@@ -58,13 +50,13 @@ package Lycon::Ctl;
   # if you do, do so before register_events
   our $KVARS={
 
-    RShift=>1,
-    RCtrl=>1,
-    RAlt=>1,
+    RShift  => 1,
+    RCtrl   => 1,
+    RAlt    => 1,
 
-    LShift=>1,
-    LCtrl=>1,
-    LAlt=>1,
+    LShift  => 1,
+    LCtrl   => 1,
+    LAlt    => 1,
 
   };
 
@@ -97,34 +89,23 @@ sub import {
 
 sub register_events(@args) {
 
-  my $pkg=caller;
-  my $modules=$Cache->{modules};
+  my ($pkg)   = caller;
+  my $modules = $Cache->{modules};
 
-  my %ids=@{$Cache->{keysets}};
+  my @keys    = array_keys(\@args);
+  my @calls   = array_values(\@args);
 
-  my @keys=array_keys(\@args);
-  my @keycalls=array_values(\@args);
+  my $dst     = $modules->{$pkg}->{kbd};
 
-  while(@keys && @keycalls) {
+  while(@keys && @calls) {
 
-    my $key=shift @keys;
-    my @calls=@{(shift @keycalls)};
+    my $key     = shift @keys;
+    my $calls   = shift @calls;
 
-    my $i=0;
+    my $kvars   = $KVARS->{$key};
+       $kvars //= 0;
 
-    for my $id(@{$ids{$key}}) {
-
-      my $kvars=$KVARS->{$id};
-      $kvars//=0;
-
-      push @{$modules->{$pkg}->{kbd}},$id=>[
-        $kvars,@calls[$i..$i+2]
-
-      ];
-
-      $i+=3;
-
-    };
+    push @$dst,$key=>[$kvars,@$calls];
 
   };
 

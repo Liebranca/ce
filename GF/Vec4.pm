@@ -182,4 +182,27 @@ sub over($self,$other) {
 };
 
 # ---   *   ---   *   ---
+# put byte onto vector position
+# in screen
+
+sub sput($self,%O) {
+
+  $O{char} //= q[#];
+
+  my ($x,$y)=@$self;
+
+  return
+
+    q[$:gd_mvcur ] .
+
+      int($y+1) . q[,] .
+      int($x+1) .
+
+    q[;>] . $O{char}
+
+  ;
+
+};
+
+# ---   *   ---   *   ---
 1; # ret

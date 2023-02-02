@@ -83,21 +83,33 @@ sub get_range($self) {
 };
 
 # ---   *   ---   *   ---
-# just for debug purposes
-# drawing functions belong on the ctlproc
+# outs draw commands for ctlproc
 
-sub draw($self) {
+sub update($self,%O) {
 
-  my @pts=$self->get_range();
-  for my $pt(@pts) {
+  # defaults
+  $O{char} //= q[.];
+
+  my $out=$NULLSTR;
+
+  for my $pt($self->get_range()) {
 
     my ($x,$y)=@$pt;
 
-    printf "\e[%i;%iH*",int($y)+1,int($x)+1;
+    $out.=
+
+      q[$:gd_mvcur ] .
+
+        int($y+1) . q[,] .
+        int($x+1) .
+
+      q[;>] . $O{char}
+
+    ;
 
   };
 
-  print "\n";
+  return $out;
 
 };
 

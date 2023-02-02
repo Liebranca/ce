@@ -31,9 +31,16 @@ package Lycon::Clk;
   our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
+# GBL
+
+  my $HAVE_CLK=undef;
+
+# ---   *   ---   *   ---
 # constructor
 
 sub nit(%O) {
+
+  return if $HAVE_CLK;
 
   # defaults
   $O{flen}//=0x6000;
@@ -53,6 +60,8 @@ sub nit(%O) {
     $O{vsz}
 
   );
+
+  $HAVE_CLK=1;
 
 };
 

@@ -32,10 +32,12 @@ package GF::Mode::ANSI;
   use GF::Rect;
   use GF::Vec4;
 
+  use Lycon;
+
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION=v0.00.1;
+  our $VERSION=v0.00.2;#b
   our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -59,26 +61,46 @@ package GF::Mode::ANSI;
   }};
 
 # ---   *   ---   *   ---
+# gets terminal dimentions
 
-sub nit(
+sub ttysz() {
+
+  my @out=(0,0);
+  Lycon::ttysz(\@out);
+
+  return @out;
+
+};
+
+# ---   *   ---   *   ---
+# initialize canvas
+
+sub canvas(
 
   # implicit
-  $class,$frame,
+  $class,
 
   # actual
-  $border,
-  $sz_x,$sz_y,
+  $border=0,
+  @sz,
 
 ) {
 
+  # default to screen size
+  @sz=(!@sz) ? ttysz() : @sz;
+
+  my $frame=$class->new_frame();
+
   $frame->{-canvas}=GF::Rect->nit(
 
-    "${sz_x}x${sz_y}",
+    "$sz[0]x$sz[1]",
     border=>$border
 
   );
 
   $frame->{-cursor}=GF::Vec4->nit();
+
+  return $frame;
 
 };
 
