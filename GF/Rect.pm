@@ -19,6 +19,7 @@ package GF::Rect;
   use strict;
   use warnings;
 
+  use Readonly;
   use English qw(-no_match_vars);
   use Carp;
 
@@ -35,6 +36,59 @@ package GF::Rect;
   use lib $ENV{'ARPATH'}.'/lib/';
   use GF::Vec4;
   use GF::Line;
+
+# ---   *   ---   *   ---
+# adds to your namespace
+
+  use Exporter 'import';
+  our @EXPORT=qw(sqdim);
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION = v0.01.0;#a
+  our $AUTHOR  = 'IBN-3DILA';
+
+# ---   *   ---   *   ---
+# ROM
+
+  Readonly my $DIM_RE => qr{
+
+    (?<sz_x> \d+) \s*
+
+    x \s*
+
+    (?<sz_y> \d+)
+
+  }x;
+
+# ---   *   ---   *   ---
+# reads DxD strings
+
+sub sqdim($sz) {
+
+  throw_bad_dim($sz)
+  if !($sz=~ $DIM_RE);
+
+  return ($+{sz_x},$+{sz_y});
+
+};
+
+# ---   *   ---   *   ---
+# ^errme
+
+sub throw_bad_dim($sz) {
+
+  errout(
+
+    q['%s' is not a square],
+
+    args => [$sz],
+    lvl  => $AR_FATAL,
+
+  );
+
+};
 
 # ---   *   ---   *   ---
 # constructor
@@ -59,7 +113,7 @@ sub nit(
 
   $O{color}   //= 0x07;
 
-  my ($sz_x,$sz_y)=split m[x],$dim;
+  my ($sz_x,$sz_y)=sqdim($dim);
 
   my %pts=(
 
@@ -256,7 +310,7 @@ sub sput_lines($self) {
       proc => 'color',
       args => [$self->{color}],
 
-      ct   => $ARG,
+      ct   => $line,
 
     };
 

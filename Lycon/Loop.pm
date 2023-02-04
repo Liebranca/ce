@@ -37,6 +37,7 @@ package Lycon::Loop;
   use Exporter 'import';
   our @EXPORT=qw(
     defmain
+    drawcmd
 
   );
 
@@ -90,11 +91,11 @@ sub never {return 0;};
   };
 
 # ---   *   ---   *   ---
-# appends to draw buffer
+# pushes draw commands to
+# graphics driver
 
-sub dwbuff($s) {
-  $s//=$NULLSTR;
-  $Cache->{gd}->{-buff}.=$s;
+sub drawcmd(@slurp) {
+  $Cache->{gd}->req(@slurp);
 
 };
 
@@ -112,6 +113,7 @@ sub set_quit($proc) {$Cache->{quit_proc}=$proc};
 sub graphics($driver_name=undef) {
 
   if(defined $driver_name) {
+
     $Cache->{gd}=eval(
       "GF\::Mode\::$driver_name->canvas()"
 
@@ -185,14 +187,14 @@ sub run(%O) {
   delete $O{panic};
 
   my %ctx    = (%O);
-  my $dwbuff = \$Cache->{gd}->{-buff};
+  my $dwbuff = $Cache->{gd}->{-buff};
 
   while(!$Cache->{quit_proc}->()) {
 
     $Cache->{busy}=Lycon::gtevcnt();
 
     # draw on update
-    if(0<length $$dwbuff) {
+    if(0 < @$dwbuff) {
       $Cache->{gd}->draw();
 
     };

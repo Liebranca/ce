@@ -15,16 +15,9 @@ package main;
   use lib $ENV{'ARPATH'}.'/lib/';
 
   use Style;
-  use Arstd;
 
-  use Lycon;
-
-  use Lycon::Clk;
   use Lycon::Ctl;
-  use Lycon::Kbd;
   use Lycon::Loop;
-
-  use GF::Mode::ANSI;
 
 # ---   *   ---   *   ---
 
