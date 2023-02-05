@@ -19,6 +19,7 @@ package GF::Vec4;
   use warnings;
 
   use Scalar::Util qw(looks_like_number);
+  use English qw(-no_match_vars);
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
@@ -63,6 +64,24 @@ sub nit($class,@co) {
 };
 
 # ---   *   ---   *   ---
+# compare two points
+
+sub equals($self,$other) {
+
+  my $out = 0;
+  my $i   = 0;
+
+  map {
+
+    $out+=$self->[$i++] eq $ARG
+
+  } @$other;
+
+  return $out==4;
+
+};
+
+# ---   *   ---   *   ---
 # get distance between two points
 
 sub dist($self,$other) {
@@ -82,6 +101,32 @@ sub dist($self,$other) {
 };
 
 # ---   *   ---   *   ---
+# ^shortest out of point array
+
+sub nearest($self,@ar) {
+
+  my @dist = map {$self->dist($ARG)} @ar;
+
+  my $i    = 0;
+  my $near = 9999;
+
+  for my $j(0..$#dist) {
+
+    my $d=$dist[$j];
+
+    if($d<$near) {
+      $i=$j;
+      $near=$d;
+
+    };
+
+  };
+
+  return ($ar[$i],$i);
+
+};
+
+# ---   *   ---   *   ---
 
 sub submax($a,$b) {
 
@@ -91,6 +136,18 @@ sub submax($a,$b) {
   else {$out=$a-$b};
 
   return $out;
+
+};
+
+sub minus($self,$other) {
+
+  my $class = ref $self;
+  my $i     = 0;
+
+  return $class->nit(map {
+    $self->[$i++]-$ARG
+
+  } @$other);
 
 };
 
@@ -178,6 +235,15 @@ sub over($self,$other) {
   };
 
   return $out;
+
+};
+
+# ---   *   ---   *   ---
+# debug out
+
+sub srepr($self,$n=4) {
+  my $out=join q[,],@{$self}[0..$n-1];
+  return "[$out]";
 
 };
 
