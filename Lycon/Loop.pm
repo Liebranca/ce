@@ -39,6 +39,8 @@ package Lycon::Loop;
     defmain
     drawcmd
 
+    graphics
+
   );
 
 # ---   *   ---   *   ---
@@ -176,15 +178,52 @@ sub defmain(%O) {
 };
 
 # ---   *   ---   *   ---
+# pre-run routines
+
+sub prologue(%O) {
+
+  print $Cache->{gd}->encur(0)
+  if $O{hide_cursor};
+
+  print $Cache->{gd}->clear()
+  if $O{clear_screen};
+
+  print $Cache->{gd}->mvcur(0,0)
+  if $O{reset_cursor};
+
+};
+
+# ---   *   ---   *   ---
+# ^iv
+
+sub epilogue(%O) {
+
+  print $Cache->{gd}->clear()
+  if $O{clear_screen};
+
+  print $Cache->{gd}->encur(1)
+  if $O{hide_cursor};
+
+  print $Cache->{gd}->mvcur(0,0)
+  if $O{reset_cursor};
+
+};
+
+# ---   *   ---   *   ---
 # execute the main loop
 
 sub run(%O) {
 
   # defaults
-  $O{panic}//=60;
+  $O{panic}        //= 60;
+  $O{hide_cursor}  //= 1;
+  $O{clear_screen} //= 1;
+  $O{reset_cursor} //= 1;
 
   my $panic=$O{panic};
   delete $O{panic};
+
+  prologue(%O);
 
   my %ctx    = (%O);
   my $dwbuff = $Cache->{gd}->{-buff};
@@ -214,6 +253,8 @@ sub run(%O) {
     if(!$panic) {last};
 
   };
+
+  epilogue(%O);
 
 };
 

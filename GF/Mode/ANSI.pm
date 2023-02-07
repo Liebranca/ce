@@ -55,7 +55,7 @@ package GF::Mode::ANSI;
 
       rd ipret req
 
-      draw color
+      draw color bnw
       mvcur encur
 
       cline
@@ -170,6 +170,8 @@ sub draw($class,$frame) {
 };
 
 # ---   *   ---   *   ---
+# set foreground and background color
+# from single hex lit
 
 sub color($class,$frame,@ar) {
 
@@ -198,6 +200,14 @@ sub color($class,$frame,@ar) {
 };
 
 # ---   *   ---   *   ---
+# ^undo
+
+sub bnw($class,$frame) {
+  return "\e[0m";
+
+};
+
+# ---   *   ---   *   ---
 # pushes commands to draw buffer
 
 sub req($class,$frame,@slurp) {
@@ -208,8 +218,8 @@ sub req($class,$frame,@slurp) {
 
 # ---   *   ---   *   ---
 
-sub mvcur($class,$frame,@ar) {
-  return "\e[".(join ';',@ar).'H';
+sub mvcur($class,$frame,$x,$y) {
+  return "\e[" . ++$y . q[;] . ++$x . q[H];
 
 };
 

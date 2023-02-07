@@ -73,7 +73,8 @@ sub equals($self,$other) {
 
   map {
 
-    $out+=$self->[$i++] eq $ARG
+    $ARG//=0;
+    $out+=$self->[$i++] eq $ARG;
 
   } @$other;
 
