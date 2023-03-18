@@ -295,11 +295,17 @@ sub restore(@keys) {
 
 sub transfer(@args) {
 
+  # get ctx
   my ($pkg)   = caller;
   my @keys    = Lycon::Kbd::swap_to($pkg);
 
   my $modules = $Lycon::Ctl::Cache->{modules};
   my $queue   = $modules->{$pkg}->{queue};
+
+  # skip first frame so events dont overlap
+  # then clear keyboard state
+  Lycon::tick($Cache->{busy});
+  Lycon::kbdcl();
 
   # TODO: pass draw,logic && logic_args
   # for each registered module
