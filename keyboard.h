@@ -40,6 +40,9 @@ int keynt(
 // clear out state for a key
 void keycl(char key);
 
+// ^batch
+void kbdcl(void);
+
 // set key callback
 void keycall(
 

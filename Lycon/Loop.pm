@@ -19,6 +19,8 @@ package Lycon::Loop;
   use warnings;
 
   use Readonly;
+  use English qw(-no_match_vars);
+
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
@@ -261,39 +263,43 @@ sub run(%O) {
 # ---   *   ---   *   ---
 # modifies main loop
 
-sub switch($logic,$args,$draw) {
+sub switch($logic,$args) {
 
   push @{$Cache->{stack}},get_state();
-
   set_logic($logic,$args);
-  set_draw($draw);
 
 };
 
 # ---   *   ---   *   ---
 # ^restores previous
 
-sub ret() {
+sub restore(@keys) {
 
-  my $draw=pop @{$Cache->{stack}};
-  my $args=pop @{$Cache->{stack}};
-  my $logic=pop @{$Cache->{stack}};
+  my $draw  = pop @{$Cache->{stack}};
+  my $args  = pop @{$Cache->{stack}};
+  my $logic = pop @{$Cache->{stack}};
 
   set_logic($logic,$args);
-  set_draw($draw);
+
+  # clear callbacks
+  Lycon::Kbd::clkeys();
+
+  # ^load saved
+  map {Lycon::Kbd::lddef(@$ARG)} @keys;
+  Lycon::Kbd::ldkeys();
 
 };
 
 # ---   *   ---   *   ---
 # transfers control from one module to another
 
-sub transfer() {
+sub transfer(@args) {
 
-  my $pkg=caller;
-  my @saved_k_data=Lycon::Kbd::swap_to($pkg);
+  my ($pkg)   = caller;
+  my @keys    = Lycon::Kbd::swap_to($pkg);
 
-  my $modules=$Lycon::Ctl::Cache->{modules};
-  my $queue=$modules->{$pkg}->{queue};
+  my $modules = $Lycon::Ctl::Cache->{modules};
+  my $queue   = $modules->{$pkg}->{queue};
 
   # TODO: pass draw,logic && logic_args
   # for each registered module
@@ -303,24 +309,13 @@ sub transfer() {
     sub {
 
       # execute pending operations
-      if($queue->pending()) {
-        $queue->ex();
+      # walkback when done
+      ($queue->pending())
+        ? $queue->ex()
+        : restore(@keys)
+        ;
 
-      # restore previous state
-      } else {
-
-        ret();
-
-        for my $k_data(@saved_k_data) {
-          Lycon::Kbd::lddef(@$k_data);
-
-        };
-
-      };
-
-    },
-
-    [],\&Lycon::Loop::ascii,
+    },\@args
 
   );
 

@@ -67,7 +67,7 @@ sub import {
 
   state $is_lycon_mod=qr{^Lycon\:\:}x;
 
-  my $pkg=caller;
+  my ($pkg)=caller;
 
   # avoid initializing twice
   # do not register Lycon modules themselves
@@ -81,6 +81,13 @@ sub import {
     queue=>Queue->nit(),
 
   };
+
+  # exporting by hand
+  no strict 'refs';
+    *{"$pkg\::get_module_queue"}=
+      *get_module_queue;
+
+  use strict 'refs';
 
 };
 

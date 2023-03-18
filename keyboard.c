@@ -246,10 +246,24 @@ void iclose(void) {
 };
 
 // ---   *   ---   *   ---
-
 // clear all states/timers/events
+
 void kbdcl(void) {
-  memset(kbd.keys,0,kbd.k_count*sizeof(kbd.keys[0]));
+
+  memset(
+    kbd.keys,0,
+    kbd.k_count*sizeof(kbd.keys[0])
+
+  );
+
+  memset(
+    kbd.evstack,0,
+    IBF_SZ*sizeof(kbd.evstack[0])
+
+  );
+
+  kbd.evlinger  = 0;
+  kbd.evstack_i = 0;
 
 };
 
@@ -266,8 +280,8 @@ void keycool(void) {
 };
 
 // ---   *   ---   *   ---
-
 // save input byte
+
 void keyibs(char key) {
 
   kbd.ibuff[kbd.ibuff_i]=key;
@@ -315,7 +329,9 @@ void evpop(char key) {
 
 };
 
+// ---   *   ---   *   ---
 // puts event in stack
+
 void evpush(char key) {
 
   // try to find key
@@ -490,8 +506,8 @@ void xkeynt(void) {
 void xkeydl(void) {XCloseDisplay(kbd.xdpy);};
 
 // ---   *   ---   *   ---
-
 // KBD constructor
+
 int keynt(
   int fd,
 
@@ -569,8 +585,8 @@ int keynt(
 };
 
 // ---   *   ---   *   ---
-
 // captures this frames input
+
 void keyrd(void) {
 
   char ibuff[IBF_SZ];

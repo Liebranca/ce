@@ -28,6 +28,7 @@ package Lycon::Kbd;
 
   use Arstd::Array;
   use Arstd::IO;
+  use Avt::FFI;
 
   use Chk;
 
@@ -51,8 +52,8 @@ package Lycon::Kbd;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION=v5.36.0;
-  our $AUTHOR='IBN-3DILA';
+  our $VERSION = v0.01.2;#a
+  our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # ROM
@@ -195,12 +196,12 @@ sub key_by_id($id) {
 # ---   *   ---   *   ---
 # ^save and redef by internal ID
 
-sub sv_by_id($id,@args) {
+sub sv_by_id($id) {
 
   my $key=key_by_id($id);
-  my $calls=svdef($key);
+  my @def=svdef($key);
 
-  return [$key,$calls];
+  return [$key,@def];
 
 };
 
@@ -213,30 +214,30 @@ sub svdef($key) {
 
   my $idex=($Keys{$key}*2)+1;
 
-  return [
+  return (
 
     $Keys[$idex]->[1],
     $Keys[$idex]->[2],
     $Keys[$idex]->[3],
     $Keys[$idex]->[4],
 
-  ];
+  );
 
 };
 
 # ---   *   ---   *   ---
 # ^restore saved callbacks
 
-sub lddef($key,$kvars,$calls) {
+sub lddef($key,$kvars,@calls) {
 
   haskey($key,1);
 
   my $idex=($Keys{$key}*2)+1;
 
   $Keys[$idex]->[1]=$kvars;
-  $Keys[$idex]->[2]=$calls->[0];
-  $Keys[$idex]->[3]=$calls->[1];
-  $Keys[$idex]->[4]=$calls->[2];
+  $Keys[$idex]->[2]=$calls[0];
+  $Keys[$idex]->[3]=$calls[1];
+  $Keys[$idex]->[4]=$calls[2];
 
 };
 
@@ -268,7 +269,7 @@ sub nit() {
       my $kvars = @{(shift @data)}[0];
 
       # set blank callbacks if reserved && unused
-      if(!exists $KeyIDs{$id}) {
+      if(! exists $KeyIDs{$id}) {
 
         define(
 
@@ -304,36 +305,67 @@ sub nit() {
 };
 
 # ---   *   ---   *   ---
-# load defined callbacks
+# template: map fn to key array
 
-sub ldkeys() {
+sub temple_walk($fn) {
 
   for(my $x=1;$x<@Keys;$x+=2) {
 
-    my $name=$Keys[$x-1];
-    my @ar=@{$Keys[$x]}[2..4];
+    my $name = $Keys[$x-1];
+    my @ar   = @{$Keys[$x]}[2..4];
 
-    my $i=0;
-
-# ---   *   ---   *   ---
-# convert perl subs to closures
-# ie, callable from C
+    my $i    = 0;
 
     for my $ev(@ar) {
-
-      if(is_coderef($ev)) {
-        my $cev=$Lycon::FFI_Instance->closure($ev);
-        $cev->sticky();
-
-        Lycon::keycall($Keys{$name},$i,$cev);
-
-      };
-
+      $fn->($name,$ev,$i);
       $i++;
 
     };
 
   };
+
+};
+
+# ---   *   ---   *   ---
+# load defined callbacks
+
+sub ldkeys() {
+
+  # convert perl subs to closures
+  # ie, callable from C
+  state $fn=sub ($name,$ev,$i) {
+
+    if(is_coderef($ev)) {
+
+      my $cev=Avt::FFI->sticky($ev);
+
+      Lycon::keycl($Keys{$name});
+      Lycon::keycall($Keys{$name},$i,$cev);
+
+    };
+
+  };
+
+  # ^map to whole key array
+  temple_walk($fn);
+
+};
+
+# ---   *   ---   *   ---
+# ^clears set keys
+
+sub clkeys() {
+
+  # assign no-op to callbacks
+  state $cev = Avt::FFI->sticky($NOOP);
+  state $fn  = sub ($name,$ev,$i) {
+    Lycon::keycl($Keys{$name});
+    Lycon::keycall($Keys{$name},$i,$cev);
+
+  };
+
+  # ^map to key array
+  temple_walk($fn);
 
 };
 
@@ -345,45 +377,43 @@ sub swap_to($pkg=undef) {
 
   $pkg//=caller;
 
-  my $modules=$Lycon::Ctl::Cache->{modules};
+  my @out     = ();
+  my @swap    = ();
+
+  my $modules = $Lycon::Ctl::Cache->{modules};
 
   my @keys=array_keys(
     $modules->{$pkg}->{kbd}
 
   );
 
-  my @values=array_values(
+  my @calls=array_values(
     $modules->{$pkg}->{kbd}
 
   );
 
-# ---   *   ---   *   ---
+  # save old and get new
+  while(@keys && @calls) {
 
-  my @saved_k_data=();
+    my $name = shift @keys;
+    my $new  = shift @calls;
 
-  while(@keys && @values) {
+    my $old  = sv_by_id(Genks::KI($name));
 
-    my $name=shift @keys;
-    my $calls=shift @values;
-
-    my $id=Genks::KI($name);
-
-    my $k_data=sv_by_id($id);
-
-    redef(
-      $k_data->[0],
-      @$calls
-
-    );
-
-    push @saved_k_data,$k_data;
+    push @swap,[$name,@$new];
+    push @out,$old;
 
   };
 
-# ---   *   ---   *   ---
+  # forget old config
+  clkeys();
 
+  # ^load new
+  map {redef(@$ARG)} @swap;
   ldkeys();
-  return @saved_k_data;
+
+  # give restore
+  return @out;
 
 };
 
