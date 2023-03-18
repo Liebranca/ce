@@ -34,14 +34,15 @@ package Lycon::Ctl;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.01.0;#a
+  our $VERSION = v0.01.1;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # global state
 
   our $Cache={
-    modules=>{},
+    modules => {},
+    order   => [],
 
   };
 
@@ -81,6 +82,10 @@ sub import {
     queue=>Queue->nit(),
 
   };
+
+  # remember order in which
+  # events are declared
+  push @{$Cache->{order}},$pkg;
 
   # exporting by hand
   no strict 'refs';

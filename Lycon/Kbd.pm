@@ -84,10 +84,11 @@ sub define_catch($has,$inv,$type,$key) {
   if(!$has && $inv) {
 
     errout(
+
       $E_NOKEY,
 
-      args=>[$type,$key],
-      calls=>[\&Lycon::Dpy::end],
+      args => [$type,$key],
+      lvl  => $AR_FATAL,
 
     );
 
@@ -97,8 +98,8 @@ sub define_catch($has,$inv,$type,$key) {
     errout(
       $E_YESKEY,
 
-      args=>[$type,$key],
-      calls=>[\&Lycon::Dpy::end],
+      args => [$type,$key],
+      lvl  => $AR_FATAL,
 
     );
 
@@ -251,11 +252,14 @@ sub nit() {
   %Keys=@Keys;
 
   # fetch modules requesting keyboard access
-  my $Ctl_Cache=$Lycon::Ctl::Cache;
-  my $modules=$Ctl_Cache->{modules};
+  my $Ctl_Cache = $Lycon::Ctl::Cache;
+  my $modules   = $Ctl_Cache->{modules};
+  my $order     = $Ctl_Cache->{order};
 
   # ^get keydata for all
-  for my $mod(values %{$modules}) {
+  for my $modname(@$order) {
+
+    my $mod   = $modules->{$modname};
 
     my @names = array_keys($mod->{kbd});
     my @data  = array_values($mod->{kbd});

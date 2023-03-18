@@ -291,6 +291,18 @@ sub restore(@keys) {
 };
 
 # ---   *   ---   *   ---
+# skip first frame
+# then clear keyboard state
+#
+# done so events dont overlap
+
+sub fpause() {
+  Lycon::tick($Cache->{busy});
+  Lycon::kbdcl();
+
+};
+
+# ---   *   ---   *   ---
 # transfers control from one module to another
 
 sub transfer(@args) {
@@ -302,10 +314,8 @@ sub transfer(@args) {
   my $modules = $Lycon::Ctl::Cache->{modules};
   my $queue   = $modules->{$pkg}->{queue};
 
-  # skip first frame so events dont overlap
-  # then clear keyboard state
-  Lycon::tick($Cache->{busy});
-  Lycon::kbdcl();
+  # time buffer
+  fpause();
 
   # TODO: pass draw,logic && logic_args
   # for each registered module
@@ -324,6 +334,8 @@ sub transfer(@args) {
     },\@args
 
   );
+
+  fpause();
 
 };
 
