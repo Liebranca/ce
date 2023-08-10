@@ -68,7 +68,7 @@ package GF::Rect;
 sub sqdim($sz) {
 
   throw_bad_dim($sz)
-  if !($sz=~ $DIM_RE);
+  if ! ($sz=~ $DIM_RE);
 
   return ($+{sz_x},$+{sz_y});
 

@@ -31,8 +31,6 @@
 
 sub generator($fname) {
 
-  print {*STDERR} "$fname\n";
-
   my $s="wchar_t chartab[]=\n  ";
 
   for(my $i=0;$i<256;$i++) {

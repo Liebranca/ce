@@ -52,8 +52,12 @@ Avt::set_config(
       author=>'IBN-3DILA',
       include=>[qw(Avt::FFI)],
 
-      body=>\&Emit::Perl::shwlbind,
-      args=>['Lycon',['ce']],
+      body=>[
+
+        \&Emit::Perl::shwlbind =>
+        ['Lycon',['ce']],
+
+      ],
 
     );
 

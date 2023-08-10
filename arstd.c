@@ -84,11 +84,11 @@ void getpath(void) {
     char* envpath;
 
     // copy environment variable
-    { char* ref_envpath=getenv("PATH");
-      envpath=malloc(
-        sizeof(char)*strlen(ref_envpath)
+    { char*  ref_envpath=getenv("PATH");
+      size_t len=strlen(ref_envpath);
 
-      );strcpy(envpath,ref_envpath);
+      envpath=malloc(sizeof(char)*len);
+      memcpy(envpath,ref_envpath,len);
 
     };
 
@@ -108,7 +108,10 @@ void getpath(void) {
       // go to next
       token=strtok(NULL,":");x++;
 
-    };free(envpath);
+    };
+
+    free(envpath);
+
   };
 
 // ---   *   ---   *   ---
