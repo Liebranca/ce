@@ -24,7 +24,7 @@ package Lycon::Loop;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
-  use Arstd;
+  use Arstd::Array;
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
@@ -76,21 +76,23 @@ sub never {return 0;};
   };
 
 # ---   *   ---   *   ---
-# global state
+# GBL
 
   my $Cache={
 
-    logic_proc=>$NOOP,
-    logic_args=>[],
+    logic_proc  => $NOOP,
+    logic_args  => [],
 
-    quit_proc=>\&never,
+    quit_proc   => \&never,
 
-    gd=>'ANSI',
-    draw_buff=>'',
+    gd          => 'ANSI',
+    draw_buff   => '',
 
-    stack=>[],
+    stack       => [],
 
-    busy=>0,
+    busy        => 0,
+
+    running     => [],
 
   };
 
@@ -225,7 +227,13 @@ sub run(%O) {
   my $panic=$O{panic};
   delete $O{panic};
 
+
+  # open
   prologue(%O);
+
+  my $runid=int @{$Cache->{running}};
+  $Cache->{running}->[$runid]=\%O;
+
 
   my %ctx    = (%O);
   my $dwbuff = $Cache->{gd}->{-buff};
@@ -256,7 +264,20 @@ sub run(%O) {
 
   };
 
+
+  # ^close and clear
   epilogue(%O);
+
+  $Cache->{running}->[$runid]=undef;
+  array_filter($Cache->{running});
+
+};
+
+# ---   *   ---   *   ---
+# ^ensures epilogue runs
+
+END {
+  map {epilogue(%$ARG)} @{$Cache->{running}};
 
 };
 
