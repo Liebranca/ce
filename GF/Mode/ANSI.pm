@@ -23,6 +23,8 @@ package GF::Mode::ANSI;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
+  use Arstd::Int;
+
   use parent 'St';
 
   use lib $ENV{'ARPATH'}.'/lib/';
@@ -38,7 +40,7 @@ package GF::Mode::ANSI;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION=v0.00.2;#b
+  our $VERSION=v0.00.3;#b
   our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -55,11 +57,12 @@ package GF::Mode::ANSI;
 
       rd ipret req
 
-      draw color bnw
-      mvcur encur
+      color truecolor
+      bitcolor bnw
 
-      cline
-      clear
+      draw mvcur encur
+
+      cline clear
 
     )],
 
@@ -175,15 +178,13 @@ sub draw($class,$frame) {
 
 sub color($class,$frame,@ar) {
 
-  my $esc=$NULLSTR;
+  return join $NULLSTR,map {
 
-  for my $c(@ar) {
+    my $fg=$ARG  & 0xF;
+    my $bg=$ARG >> 4;
 
-    my $fg=$c&0xF;
-    my $bg=$c>>4;
-
-    my $bold_fg=$fg>7;
-    my $bold_bg=$bg>7;
+    my $bold_fg=$fg > 7;
+    my $bold_bg=$bg > 7;
 
     $fg&=7;$fg=30+$fg;
     $bg&=7;$bg=40+$bg;
@@ -191,11 +192,75 @@ sub color($class,$frame,@ar) {
     $bold_fg=($bold_fg) ? 1 : 22;
     $bold_bg=($bold_bg) ? 5 : 25;
 
-    $esc.="\e[$bold_fg;${fg};$bold_bg;${bg}m";
+    "\e[$bold_fg;${fg};$bold_bg;${bg}m";
 
-  };
+  } @ar;
 
-  return $esc;
+};
+
+# ---   *   ---   *   ---
+# ^RGB
+
+sub truecolor($class,$frame,@ar) {
+
+  return join $NULLSTR,map {
+
+    my $fg = $ARG  & 0xFFFFFF;
+    my $bg = $ARG >> 24;
+
+    my $i  = 38;
+
+    map {
+
+      my $b=$ARG & 0xFF;$ARG >>= 8;
+      my $g=$ARG & 0xFF;$ARG >>= 8;
+      my $r=$ARG & 0xFF;
+
+      my $s="\e[${i};2;$r;$g;${b}m";
+
+      $i+=10;
+      $s;
+
+    } ($fg,$bg);
+
+  } @ar;
+
+};
+
+# ---   *   ---   *   ---
+# ^8-bit RGB
+
+sub bitcolor($class,$frame,@ar) {
+
+  return join $NULLSTR,map {
+
+    my $fg = $ARG  & 0xFF;
+    my $bg = $ARG >> 8;
+
+    ($fg,$bg)=map {
+
+      my $b=$ARG & 3;$ARG >>= 2;
+      my $g=$ARG & 7;$ARG >>= 3;
+      my $r=$ARG & 7;
+
+      $r*=int(0xFF/8);
+      $g*=int(0xFF/8);
+      $b*=int(0xFF/4);
+
+        ($r << 16)
+      | ($g <<  8)
+      | ($b <<  0)
+      ;
+
+    } ($fg,$bg);
+
+    $frame->truecolor(
+      ($bg << 24)
+    | ($fg <<  0)
+
+    );
+
+  } @ar;
 
 };
 

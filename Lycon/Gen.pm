@@ -49,22 +49,28 @@ sub clear(@keys) {
 # ---   *   ---   *   ---
 # template: movement
 
-sub mvdec($co,$ax,$limit) {
-  my $ref  = \$co->[$ax];
-  $$ref   -= 1*($$ref > $limit->[$ax]->[0]);
+sub mvdec($sref,$co,$dim,$ax) {
+
+  my $src  = $$sref;
+
+  my $ref  = \$src->{$co}->[$ax];
+  $$ref   -= 1*($$ref > $src->{$dim}->[$ax]->[0]);
 
 };
 
-sub mvinc($co,$ax,$limit) {
-  my $ref  = \$co->[$ax];
-  $$ref   += 1*($$ref < $limit->[$ax]->[1]-1);
+sub mvinc($sref,$co,$dim,$ax) {
+
+  my $src  = $$sref;
+
+  my $ref  = \$src->{$co}->[$ax];
+  $$ref   += 1*($$ref < $src->{$dim}->[$ax]->[1]-1);
 
 };
 
 # ---   *   ---   *   ---
 # generator: 2d movement
 
-sub mv2d($co,$limit,%O) {
+sub mv2d($src,$co,$dim,%O) {
 
   # defaults
   $O{tap}  //= 1;
@@ -76,10 +82,12 @@ sub mv2d($co,$limit,%O) {
 
   # make callback array
   my @cba=(
-    sub () {mvdec($co,1,$limit)}, # up
-    sub () {mvdec($co,0,$limit)}, # left
-    sub () {mvinc($co,1,$limit)}, # down
-    sub () {mvinc($co,0,$limit)}, # right
+
+    # up,down,left,right
+    sub () {mvdec($src,$co,$dim,1)},
+    sub () {mvdec($src,$co,$dim,0)},
+    sub () {mvinc($src,$co,$dim,1)},
+    sub () {mvinc($src,$co,$dim,0)},
 
   );
 
@@ -105,15 +113,15 @@ sub mv2d($co,$limit,%O) {
 # ---   *   ---   *   ---
 # ^ice
 
-sub wasd($co,$limit,%O) {
+sub wasd($src,$co,$dim,%O) {
   $O{keys}=[qw(w a s d)];
-  return mv2d($co,$limit,%O);
+  return mv2d($src,$co,$dim,%O);
 
 };
 
-sub arrows($co,$limit,%O) {
+sub arrows($src,$co,$dim,%O) {
   $O{keys}=[qw(up left down right)];
-  return mv2d($co,$limit,%O);
+  return mv2d($src,$co,$dim,%O);
 
 };
 
@@ -176,6 +184,7 @@ sub TI($st) {
 
   # ^special cased keys
   my $gen=sub ($c) { return sub {
+    Lycon::keycool();
     $st->{buf} .= $c;
 
   }};
