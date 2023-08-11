@@ -175,11 +175,17 @@ sub TI($st) {
 
 
   # ^special cased keys
+  my $gen=sub ($c) { return sub {
+    $st->{buf} .= $c;
+
+  }};
+
   push @out,(
 
-    ret       => [sub {$st->{buf} .= "\n"},0,0],
-    space     => [sub {$st->{buf} .= " "},0,0],
-    backspace => [sub {$st->{buf} .= "\b"},0,0],
+    ret       => [($gen->("\n")) x 2,0],
+
+    space     => [($gen->(" ")) x 2,0],
+    backspace => [($gen->("\b")) x 2,0],
 
     LShift    => [
 
@@ -201,7 +207,6 @@ sub TI($st) {
 
   );
 
-  $Lycon::Kbd::NONTI=@out/2;
 
   return @out;
 

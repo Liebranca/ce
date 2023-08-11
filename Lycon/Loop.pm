@@ -285,7 +285,6 @@ END {
 # modifies main loop
 
 sub switch($logic,$args) {
-
   push @{$Cache->{stack}},get_state();
   set_logic($logic,$args);
 
@@ -322,21 +321,15 @@ sub fpause() {
 # ---   *   ---   *   ---
 # transfers control from one module to another
 
-sub transfer($from,@args) {
-
-  # get ctx
-  my ($pkg)   = caller;
-  my $modules = $Lycon::Ctl::Cache->{modules};
-  my $queue   = $modules->{$pkg}->{queue};
+sub transfer($to,$from,@args) {
 
   # alter keyboard state
-  Lycon::Kbd::swap_to($pkg);
-
-  # time buffer
+  Lycon::Kbd::swap_to($to);
   fpause();
 
-  # TODO: pass draw,logic && logic_args
-  # for each registered module
+
+  # ^use module queue as logic routine
+  my $Q=Lycon::Ctl::get_module_queue($to);
 
   switch(
 
@@ -344,8 +337,8 @@ sub transfer($from,@args) {
 
       # execute pending operations
       # walkback when done
-      ($queue->pending())
-        ? $queue->ex()
+      ($Q->pending())
+        ? $Q->ex()
         : restore($from)
         ;
 

@@ -24,6 +24,7 @@ package Lycon::Ctl;
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
+  use Style;
   use Arstd::Array;
 
   use Chk;
@@ -34,7 +35,7 @@ package Lycon::Ctl;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.01.1;#a
+  our $VERSION = v0.01.2;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -78,8 +79,8 @@ sub import {
   # initialize
   my $ref=$Cache->{modules}->{$pkg}={
 
-    kbd=>[],
-    queue=>Queue->nit(),
+    kbd => [],
+    Q   => Queue->nit(),
 
   };
 
@@ -124,11 +125,119 @@ sub register_events(@args) {
 };
 
 # ---   *   ---   *   ---
+# give pending ops
 
-sub get_module_queue() {
+sub get_module_queue($pkg=undef) {
+  $pkg //= caller;
+  return $Cache->{modules}->{$pkg}->{Q};
+
+};
+
+# ---   *   ---   *   ---
+# template: pass control to pkg
+
+sub _call_temple($to,$epilogue) {
+
+  return sub (@beq) {
+
+    my @call = caller 1;
+
+    my $pkg  = $call[0];
+    my $ret  = "$pkg\::ctl_ret";
+    my $loop = "$to\::ctl_loop";
+
+    my $Q    = get_module_queue($to);
+
+    $Q->add(\&$ret);
+    $Q->skip(\&$loop,@beq);
+
+    Lycon::Loop::transfer($to,$pkg);
+    $epilogue->();
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# template: control hold
+
+sub _loop_temple($at,$cond) {
+
+  return sub (@beq) {
+
+    my $Q    = get_module_queue($at);
+    my $loop = "$at\::ctl_loop";
+
+    $Q->skip(\&$loop,@beq) if $cond->();
+
+    map {$ARG->()} @beq;
+
+    my $draw = "$at\::draw";
+       $draw = \&$draw;
+
+    $draw->();
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# template: control return
+
+sub _ret_temple($epilogue) {
+
+  return sub (@args) {
+    $epilogue->(@args);
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# template: select pkg to ctl_call
+
+sub _switch_temple($prologue) {
+
+  return sub ($pkg,@beq) {
+
+    $prologue->($pkg);
+
+    my $fn="$pkg\::ctl_call";
+       $fn=\&$fn;
+
+    $fn->(@beq);
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# ^generates control subs
+# for caller module
+
+sub register_xfers(%O) {
+
+  # defaults
+  $O{call}   //= $NOOP;
+  $O{loop}   //= sub () {1};
+  $O{ret}    //= $NOOP;
+  $O{switch} //= $NOOP;
+
 
   my $pkg=caller;
-  return $Cache->{modules}->{$pkg}->{queue};
+  no strict 'refs';
+
+  *{"$pkg\::ctl_call"}=
+    _call_temple($pkg,$O{call});
+
+  *{"$pkg\::ctl_loop"}=
+    _loop_temple($pkg,$O{loop});
+
+  *{"$pkg\::ctl_ret"}=
+    _ret_temple($O{ret});
+
+  *{"$pkg\::ctl_switch"}=
+    _switch_temple($O{switch});
 
 };
 
