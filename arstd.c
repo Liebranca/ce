@@ -88,7 +88,7 @@ void getpath(void) {
       size_t len=strlen(ref_envpath);
 
       envpath=malloc(sizeof(char)*len);
-      memcpy(envpath,ref_envpath,len);
+      strncpy(envpath,ref_envpath,len);
 
     };
 

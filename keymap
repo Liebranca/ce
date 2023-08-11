@@ -19,7 +19,7 @@
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
-  use Arstd;
+  use Style;
 
   use lib $ENV{'ARPATH'}.'/lib/';
 
@@ -68,7 +68,7 @@ Emit::Std::outf(
 
   'C','ce/keymap.h',
 
-  body=>\&Genks::keymap_generator,
+  body=>[\&Genks::keymap_generator=>[]],
   add_guards=>1,
 
 );
@@ -79,7 +79,7 @@ Emit::Std::outf(
 
   'C','ce/keycalls.h',
 
-  body=>\&Genks::keycalls_generator,
+  body=>[\&Genks::keycalls_generator=>[]],
   add_guards=>1,
 
 );

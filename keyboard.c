@@ -291,7 +291,9 @@ void keyibs(char key) {
 
 };
 
+// ---   *   ---   *   ---
 // get input bytes
+
 char* keyibl(void) {
 
   static char ibuff[IBF_SZ+1];
@@ -305,9 +307,8 @@ char* keyibl(void) {
 };
 
 // ---   *   ---   *   ---
-// event stack
-
 // removes event from stack
+
 void evpop(char key) {
 
   // find key and blank it
@@ -434,6 +435,7 @@ void keychk(void) {
     ev++;
 
   };
+
 };
 
 // ---   *   ---   *   ---
@@ -608,6 +610,7 @@ void keyrd(void) {
     *input=(*input)>>8;
 
   };
+
 };
 
 // ---   *   ---   *   ---

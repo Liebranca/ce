@@ -54,8 +54,8 @@ package Genks;
   );
 
 # ---   *   ---   *   ---
-
 # magic
+
 sub parse_kbdlay {
 
   my $f=$ENV{'ARPATH'}.'/ce/kbdlay';
@@ -185,6 +185,7 @@ EOF
 
 # in: path to key-charmap table
 # generates text-input funcs
+
 sub rdti($tifile,$pl=0) {
 
   if(!$tifile) {return ();};
@@ -236,8 +237,8 @@ sub process_keymap($tifile,$pl,@KEYMAP) {
 
 # ---   *   ---   *   ---
 
-  my @names=array_keys(\@KEYMAP);
-  my @values=array_values(\@KEYMAP);
+  my @names  = array_keys(\@KEYMAP);
+  my @values = array_values(\@KEYMAP);
 
   # walk through keymap
   while(@names && @values) {
@@ -280,9 +281,15 @@ sub process_keymap($tifile,$pl,@KEYMAP) {
 
 # ---   *   ---   *   ---
 
-sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
+sub pl_keymap(
+  $src,$dst,
 
-  process_keymap('ce/keys/ti',1,@$src);
+  $tifile=$NULLSTR,
+  $snonti=0,
+
+) {
+
+  process_keymap($tifile,1,@$src);
   my @KEYMAP=@{ $Cache{-KEYMAP} };
 
   @$src=@KEYMAP;
@@ -352,6 +359,8 @@ sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
 
 # ---   *   ---   *   ---
 
+  $Cache{-NON_TI} -= $snonti;
+
   return (
 
     0,
@@ -369,7 +378,7 @@ sub pl_keymap($src,$dst,$tifile=$NULLSTR) {
 
 # ---   *   ---   *   ---
 
-sub keymap_generator($fname) {
+sub keymap_generator() {
 
   my @KEYMAP=@{ $Cache{-KEYMAP} };
 
@@ -485,9 +494,9 @@ sub keymap_generator($fname) {
 };
 
 # ---   *   ---   *   ---
-
 # auxiliary file
-sub keycalls_generator($fname) {
+
+sub keycalls_generator() {
 
   my @KEYMAP=@{ $Cache{-KEYMAP} };
   my $result=$NULLSTR;

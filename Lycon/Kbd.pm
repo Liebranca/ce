@@ -74,6 +74,7 @@ package Lycon::Kbd;
   my  %KeyIDs = ();
 
   our $Nited  = undef;
+  our $NONTI  = 0;
 
 # ---   *   ---   *   ---
 # common errorchk
@@ -178,6 +179,19 @@ sub redef(
 
   $Keys[$idex]->[4]=(defined $onRel)
     ? $onRel : $Keys[$idex]->[3];
+
+};
+
+# ---   *   ---   *   ---
+# ^clear
+
+sub clrdef($key) {
+
+  my $idex=($Keys{$key}*2)+1;
+
+  $Keys[$idex]->[2]=$NOOP;
+  $Keys[$idex]->[3]=$NOOP;
+  $Keys[$idex]->[4]=$NOOP;
 
 };
 
@@ -297,7 +311,10 @@ sub nit() {
 # register the events
 
   %Keys=@Keys;
-  my @ntargs=Genks::pl_keymap(\@Keys,\%Keys);
+  my @ntargs=Genks::pl_keymap(
+    \@Keys,\%Keys,$NULLSTR,$NONTI
+
+  );
 
   Lycon::keynt(@ntargs);
 
@@ -360,9 +377,19 @@ sub ldkeys() {
 
 sub clkeys() {
 
+  my @out=();
+
   # assign no-op to callbacks
   state $cev = Avt::FFI->sticky($NOOP);
   state $fn  = sub ($name,$ev,$i) {
+
+    # mute unused keys
+    if(! $i && exists $Keys{$name}) {
+      clrdef($name);
+
+    };
+
+    # ^clear state of all
     Lycon::keycl($Keys{$name});
     Lycon::keycall($Keys{$name},$i,$cev);
 
@@ -370,6 +397,8 @@ sub clkeys() {
 
   # ^map to key array
   temple_walk($fn);
+
+  return @out;
 
 };
 
@@ -381,9 +410,7 @@ sub swap_to($pkg=undef) {
 
   $pkg//=caller;
 
-  my @out     = ();
   my @swap    = ();
-
   my $modules = $Lycon::Ctl::Cache->{modules};
 
   my @keys=array_keys(
@@ -402,10 +429,7 @@ sub swap_to($pkg=undef) {
     my $name = shift @keys;
     my $new  = shift @calls;
 
-    my $old  = sv_by_id(Genks::KI($name));
-
     push @swap,[$name,@$new];
-    push @out,$old;
 
   };
 
@@ -415,9 +439,6 @@ sub swap_to($pkg=undef) {
   # ^load new
   map {redef(@$ARG)} @swap;
   ldkeys();
-
-  # give restore
-  return @out;
 
 };
 

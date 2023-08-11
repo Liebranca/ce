@@ -294,7 +294,7 @@ sub switch($logic,$args) {
 # ---   *   ---   *   ---
 # ^restores previous
 
-sub restore(@keys) {
+sub restore($from) {
 
   my $draw  = pop @{$Cache->{stack}};
   my $args  = pop @{$Cache->{stack}};
@@ -302,12 +302,8 @@ sub restore(@keys) {
 
   set_logic($logic,$args);
 
-  # clear callbacks
-  Lycon::Kbd::clkeys();
-
-  # ^load saved
-  map {Lycon::Kbd::lddef(@$ARG)} @keys;
-  Lycon::Kbd::ldkeys();
+  # restore keyboard state
+  Lycon::Kbd::swap_to($from);
 
 };
 
@@ -326,14 +322,15 @@ sub fpause() {
 # ---   *   ---   *   ---
 # transfers control from one module to another
 
-sub transfer(@args) {
+sub transfer($from,@args) {
 
   # get ctx
   my ($pkg)   = caller;
-  my @keys    = Lycon::Kbd::swap_to($pkg);
-
   my $modules = $Lycon::Ctl::Cache->{modules};
   my $queue   = $modules->{$pkg}->{queue};
+
+  # alter keyboard state
+  Lycon::Kbd::swap_to($pkg);
 
   # time buffer
   fpause();
@@ -349,7 +346,7 @@ sub transfer(@args) {
       # walkback when done
       ($queue->pending())
         ? $queue->ex()
-        : restore(@keys)
+        : restore($from)
         ;
 
     },\@args
