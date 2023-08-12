@@ -38,10 +38,12 @@ package Lycon::Loop;
 
   use Exporter 'import';
   our @EXPORT=qw(
+
     defmain
     drawcmd
 
     graphics
+    fBy
 
   );
 
@@ -93,6 +95,7 @@ sub never {return 0;};
     busy        => 0,
 
     running     => [],
+    fmult       => 0.0,
 
   };
 
@@ -128,6 +131,15 @@ sub graphics($driver_name=undef) {
   };
 
   return $Cache->{gd};
+
+};
+
+# ---   *   ---   *   ---
+# multiply step by a faux
+# frame delta
+
+sub fBy($f=1.0) {
+  return $f * $Cache->{fmult};
 
 };
 
@@ -242,16 +254,25 @@ sub run(%O) {
 
     $Cache->{busy}=Lycon::gtevcnt();
 
+
     # draw on update
     if(0 < @$dwbuff) {
       $Cache->{gd}->draw();
 
     };
 
+
+    # run clock
     Lycon::tick($Cache->{busy});
 
+    $Cache->{fmult}=
+      1 / (1+(3 *! $Cache->{busy}));
+
+
+    # run event handler
     Lycon::keyrd();
     Lycon::keychk();
+
 
     # run logic
     $Cache->{logic_proc}->(
@@ -259,6 +280,8 @@ sub run(%O) {
 
     );
 
+
+    # timed exit
     $panic--;
     if(!$panic) {last};
 

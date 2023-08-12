@@ -8,8 +8,8 @@
 //
 // CONTRIBUTORS
 // lyeb,
-// ---   *   ---   *   ---
 
+// ---   *   ---   *   ---
 // deps
 
   #include "clock.h"
@@ -39,13 +39,13 @@ typedef struct {
 } CLK;
 
 // ---   *   ---   *   ---
-// global state
+// GBL
 
   static CLK c;
 
 // ---   *   ---   *   ---
-
 // constructor
+
 void clknt(
 
   uint64_t flen,
@@ -67,31 +67,39 @@ void clknt(
 };
 
 // ---   *   ---   *   ---
-// busy=handles sleep for longer
-
 // frame-time calculator
+
 void tick(int busy) {
 
-  c.fbeg=(uint64_t) clock();
-  c.delta=c.fbeg-c.fend;
-  c.fend=c.fbeg;
+  // get frame delta
+  c.fbeg  = (uint64_t) clock();
+  c.delta = c.fbeg-c.fend;
+  c.fend  = c.fbeg;
 
-  uint64_t m_flen=c.flen<<((!busy)*2);
 
-  if(c.delta<m_flen) {
-    usleep(m_flen-c.delta);
+  // adjust frame length
+  // to sleep less on busy signal
+  uint64_t ad_flen = c.flen << (2 *! busy);
+
+  // ^sleep if delta under
+  // adjusted frame length
+  if(c.delta < ad_flen) {
+    usleep(ad_flen-c.delta);
     c.delta=0;
 
   };
 
-  c.vix++;c.vix&=(c.vsz-1);
+
+  // adv anim
+  c.vix++;
+  c.vix&=(c.vsz-1);
 
 };
 
 // ---   *   ---   *   ---
-
 // return clock char at this frame
 // useless but cute
+
 wchar_t clkdr(void) {
   return *(c.v+c.vix);
 

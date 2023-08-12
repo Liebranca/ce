@@ -20,6 +20,7 @@ package GF::Icon;
 
   use Readonly;
   use English qw(-no_match-vars);
+  use List::Util qw(min max);
 
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
@@ -91,6 +92,15 @@ package GF::Icon;
   Readonly our $PAIN_HIT0   => chr(0x100+0x8F);
   Readonly our $PAIN_HIT1   => chr(0x100+0x93);
 
+  Readonly our $PAIN => [
+
+    $PAIN_S0,$PAIN_S1,$PAIN_S2,
+    $PAIN_S3,$PAIN_S4,$PAIN_S5,
+
+    $PAIN_DED
+
+  ];
+
 # ---   *   ---   *   ---
 # shield
 
@@ -156,6 +166,15 @@ package GF::Icon;
   Readonly our $TANK_DED    => chr(0x100+0xB7);
   Readonly our $TANK_BLESS  => chr(0x100+0xB8);
   Readonly our $TANK_H      => chr(0x100+0x10);
+
+  Readonly our $TANK =>[
+
+    $TANK_S0,$TANK_S1,$TANK_S2,
+    $TANK_S3,$TANK_S4,$TANK_S5,
+
+    $TANK_DED,
+
+  ];
 
 # ---   *   ---   *   ---
 # diamond
@@ -272,6 +291,84 @@ package GF::Icon;
   Readonly our $PAL5        => chr(0x100+0xFC);
   Readonly our $PAL6        => chr(0x100+0xFD);
   Readonly our $PAL7        => chr(0x100+0xFE);
+
+# ---   *   ---   *   ---
+# cstruc for animations
+
+sub new($class,$anim,%O) {
+
+  # defaults
+  $O{rate} //= 16;
+
+
+  # make ice
+  my $self=bless {
+
+    buf   => [@$anim],
+
+    len   => int @$anim,
+    rate  => 1/$O{rate},
+
+    i     => 0,
+    cchar => $anim->[0],
+
+  },$class;
+
+  return $self;
+
+};
+
+# ---   *   ---   *   ---
+# ^play anim
+
+sub play($self,$step=1) {
+
+  $self->{i} += $self->{rate} / $step;
+  $self->{i} *= $self->{i} < $self->{len};
+
+  return $self->get_cchar();
+
+};
+
+# ---   *   ---   *   ---
+# ^without looping
+
+sub play_stop($self,$step=1) {
+
+  $self->{i} += $self->{rate} / $step;
+
+  $self->{i}  = $self->{len}-1
+  if $self->{i} > $self->{len};
+
+  return $self->get_cchar();
+
+};
+
+# ---   *   ---   *   ---
+# ^in reverse
+
+sub rewind($self,$step=1) {
+
+  $self->{i} -= $self->{rate} / $step;
+  $self->{i} *= $self->{i} >= 0;
+
+  return $self->get_cchar();
+
+};
+
+# ---   *   ---   *   ---
+# ^gets current frame
+
+sub get_cchar($self) {
+
+  my $i=max(0,min($self->{i},$self->{len}-1));
+
+  $self->{cchar}=
+    $self->{buf}->[int $i];
+
+  return $self->{cchar};
+
+};
 
 # ---   *   ---   *   ---
 1; # ret
