@@ -25,6 +25,8 @@ package GF::Icon;
   use lib $ENV{'ARPATH'}.'/lib/sys/';
 
   use Style;
+
+  use Arstd::Int;
   use Arstd::IO;
 
   use parent 'St';
@@ -32,7 +34,7 @@ package GF::Icon;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION=v0.00.1;#b
+  our $VERSION=v0.00.3;#b
   our $AUTHOR='IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -81,23 +83,23 @@ package GF::Icon;
 # ---   *   ---   *   ---
 # heart
 
-  Readonly our $PAIN_S0     => chr(0x100+0x7F);
-  Readonly our $PAIN_S1     => chr(0x100+0x80);
-  Readonly our $PAIN_S2     => chr(0x100+0x81);
-  Readonly our $PAIN_S3     => chr(0x100+0x82);
-  Readonly our $PAIN_S4     => chr(0x100+0x83);
-  Readonly our $PAIN_S5     => chr(0x100+0x84);
-  Readonly our $PAIN_DED    => chr(0x100+0x85);
-  Readonly our $PAIN_BLESS  => chr(0x100+0x86);
-  Readonly our $PAIN_HIT0   => chr(0x100+0x8F);
-  Readonly our $PAIN_HIT1   => chr(0x100+0x93);
+  Readonly our $HEART_S0    => chr(0x100+0x7F);
+  Readonly our $HEART_S1    => chr(0x100+0x80);
+  Readonly our $HEART_S2    => chr(0x100+0x81);
+  Readonly our $HEART_S3    => chr(0x100+0x82);
+  Readonly our $HEART_S4    => chr(0x100+0x83);
+  Readonly our $HEART_S5    => chr(0x100+0x84);
+  Readonly our $HEART_DED   => chr(0x100+0x85);
+  Readonly our $HEART_BLESS => chr(0x100+0x86);
+  Readonly our $HEART_HIT0  => chr(0x100+0x8F);
+  Readonly our $HEART_HIT1  => chr(0x100+0x93);
 
-  Readonly our $PAIN => [
+  Readonly our $HEART => [
 
-    $PAIN_S0,$PAIN_S1,$PAIN_S2,
-    $PAIN_S3,$PAIN_S4,$PAIN_S5,
+    $HEART_S0,$HEART_S1,$HEART_S2,
+    $HEART_S3,$HEART_S4,$HEART_S5,
 
-    $PAIN_DED
+    $HEART_DED
 
   ];
 
@@ -124,6 +126,13 @@ package GF::Icon;
   Readonly our $TASK_S2     => chr(0x100+0x97);
   Readonly our $TASK_S3     => chr(0x100+0x96);
   Readonly our $TASK_S4     => chr(0x100+0x95);
+
+  Readonly our $TASK => [
+
+    $TASK_S4,$TASK_S3,$TASK_S2,
+    $TASK_S1,$TASK_S0,
+
+  ];
 
 # ---   *   ---   *   ---
 # eyes
@@ -179,13 +188,24 @@ package GF::Icon;
 # ---   *   ---   *   ---
 # diamond
 
-  Readonly our $DIAM        => chr(0x100+0xB9);
-  Readonly our $SNOWFLAKE   => chr(0x100+0xBA);
+  Readonly our $FROZEN      => chr(0x100+0xBA);
+
   Readonly our $DIAM_H      => chr(0x100+0xBB);
-  Readonly our $DIAM_V      => chr(0x100+0xBC);
-  Readonly our $DIAM_BLESS  => chr(0x100+0xBD);
-  Readonly our $DIAM_DED    => chr(0x100+0xBE);
   Readonly our $DIAM_RND    => chr(0x100+0xBF);
+
+  Readonly our $MANA_S0     => chr(0x100+0xB9);
+  Readonly our $MANA_S1     => chr(0x100+0xBC);
+  Readonly our $MANA_S2     => chr(0x100+0xBD);
+  Readonly our $MANA_DED    => chr(0x100+0xBE);
+
+  Readonly our $MANA => [
+
+    $MANA_S0,$MANA_S1,
+    $MANA_S2,
+
+    $MANA_DED,
+
+  ];
 
 # ---   *   ---   *   ---
 # border: single
@@ -298,23 +318,35 @@ package GF::Icon;
 sub new($class,$anim,%O) {
 
   # defaults
-  $O{rate} //= 16;
+  $O{rate}  //= 16;
+  $O{color} //= 0b11111111;
 
 
   # make ice
   my $self=bless {
 
-    buf   => [@$anim],
+    buf    => [@$anim],
 
-    len   => int @$anim,
-    rate  => 1/$O{rate},
+    len    => int @$anim,
+    rate   => 0,
 
-    i     => 0,
-    cchar => $anim->[0],
+    i      => 0,
+    cframe => $anim->[0],
+    color  => $O{color},
 
   },$class;
 
+  $self->set_rate($O{rate});
+
   return $self;
+
+};
+
+# ---   *   ---   *   ---
+# recalc playback rate
+
+sub set_rate($self,$x) {
+  $self->{rate}=1/$x;
 
 };
 
@@ -326,7 +358,7 @@ sub play($self,$step=1) {
   $self->{i} += $self->{rate} / $step;
   $self->{i} *= $self->{i} < $self->{len};
 
-  return $self->get_cchar();
+  return $self->get_cframe();
 
 };
 
@@ -337,10 +369,10 @@ sub play_stop($self,$step=1) {
 
   $self->{i} += $self->{rate} / $step;
 
-  $self->{i}  = $self->{len}-1
+  $self->{i}  = $self->{len}
   if $self->{i} > $self->{len};
 
-  return $self->get_cchar();
+  return $self->get_cframe();
 
 };
 
@@ -352,21 +384,220 @@ sub rewind($self,$step=1) {
   $self->{i} -= $self->{rate} / $step;
   $self->{i} *= $self->{i} >= 0;
 
-  return $self->get_cchar();
+  return $self->get_cframe();
 
 };
 
 # ---   *   ---   *   ---
 # ^gets current frame
 
-sub get_cchar($self) {
+sub get_cframe($self) {
 
   my $i=max(0,min($self->{i},$self->{len}-1));
 
-  $self->{cchar}=
+  $self->{cframe}=
     $self->{buf}->[int $i];
 
-  return $self->{cchar};
+  return $self->{cframe};
+
+};
+
+# ---   *   ---   *   ---
+# ^array extension
+
+package GF::Icon::Array;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use Readonly;
+  use English qw(-no_match-vars);
+  use List::Util qw(min max);
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+
+  use Style;
+
+  use Arstd::Int;
+  use Arstd::IO;
+
+  use parent 'St';
+
+# ---   *   ---   *   ---
+# cstruc
+
+sub new($class,$ar,%O) {
+
+  my @icons=map {
+
+    GF::Icon->new(
+
+      $ARG->{anim},
+      color=>$ARG->{color},
+
+      %O
+
+    )
+
+  } @$ar;
+
+  my $self=bless \@icons,$class;
+  return $self;
+
+};
+
+# ---   *   ---   *   ---
+# playback wrappers
+
+sub set_rate($self,$x) {
+  map {$ARG->{rate}=1/$x} @$self;
+
+};
+
+sub play($self,$step=1) {
+  map {$ARG->play($step)} @$self;
+
+};
+
+sub play_stop($self,$step=1) {
+  map {$ARG->play_stop($step)} @$self;
+
+};
+
+sub rewind($self,$step=1) {
+  map {$ARG->rewind($step)} @$self;
+
+};
+
+# ---   *   ---   *   ---
+# gets current frame
+
+sub get_cframe($self) {
+
+  my $total=int@$self;
+
+  # get chunk size
+  my $half=($total >= 8)
+    ? int_urdiv($total,2)-1
+    : 3
+    ;
+
+  my $step=($total > 4)
+    ? $half
+    : $total
+    ;
+
+
+  # ^join chunks
+  my $beg    = 0;
+  my $end    = $step;
+
+  my @chunks = map {
+
+    $end=min($end,$total-1);
+
+    my @line=(@$self)[$beg..$end];
+
+    $beg+=$ARG+1;
+    $end+=$ARG+1;
+
+    join $NULLSTR,map {
+      $ARG->{cframe}
+
+    } @line;
+
+  } ($step,$step);
+
+
+  # ^filter out blanks
+  return grep {
+    length $ARG
+
+  } @chunks;
+
+};
+
+# ---   *   ---   *   ---
+# give drawcmd for each icon
+
+sub draw($self,$co) {
+
+  # get current frame
+  my @out = ();
+  my @ar  = $self->get_cframe();
+
+
+  # get array is monochrome
+  my @colors=map {$ARG->{color}} @$self;
+  my $monoch=int @colors == int grep {
+    $ARG == $colors[0]
+
+  } @colors;
+
+
+  # ^write one char at a time (!!)
+  if(! $monoch) {
+
+    @out=map {
+
+      my $x=$co->[0];
+
+      # get draw command for each line
+      my @line=map {
+
+        {
+          proc => 'mvcur',
+          args => [$x++,$co->[1]],
+
+        },{
+
+          proc => 'bitcolor',
+          args => [shift @colors],
+
+          ct   => $ARG,
+
+        }
+
+      } split $NULLSTR,$ARG;
+
+
+      # go to next line
+      # and disable color at EOL
+      $co->[1]++;
+      @line,{proc=>'bnw'};
+
+    } @ar;
+
+
+  # ^line at a time, all same color
+  } else {
+
+    @out=map {
+
+      {
+        proc => 'mvcur',
+        args => [$co->[0],$co->[1]++],
+
+      },{
+
+        proc => 'bitcolor',
+        args => [$colors[0]],
+
+        ct   => $ARG,
+
+      },{
+
+        proc => 'bnw',
+
+      }
+
+    } @ar;
+
+  };
+
+
+  return @out;
 
 };
 

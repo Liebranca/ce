@@ -152,10 +152,10 @@ sub ipret($class,$frame) {
   my $out  = $NULLSTR;
   my $buff = $frame->{-buff};
 
-  for my $req(@$buff) {
-    $out.=$frame->rd($req);
+  map {
+    $out.=$frame->rd($ARG);
 
-  };
+  } @$buff;
 
   return $out;
 
